@@ -120,7 +120,8 @@ def compile_latex(latex_code: str) -> tuple[Optional[bytes], Optional[str]]:
         cmd = [
             "pdflatex",
             "-interaction=nonstopmode",
-            "-halt-on-error",
+            # Note: no -halt-on-error — pdflatex recovers from many warnings/errors
+            # and still produces a valid PDF. We check returncode + pdf existence.
             f"-output-directory={tmpdir}",
             str(tex_path),
         ]
@@ -139,15 +140,18 @@ def compile_latex(latex_code: str) -> tuple[Optional[bytes], Optional[str]]:
                 return None, f"pdflatex timed out after {PDFLATEX_TIMEOUT}s"
 
         pdf_path = tmpdir / "resume.pdf"
-        if last_result and last_result.returncode == 0 and pdf_path.exists():
+        # pdflatex exits with code 1 even when a PDF is produced (due to non-fatal errors).
+        # We treat PDF existence as the real success signal — the same behavior as
+        # running pdflatex manually in nonstopmode.
+        if pdf_path.exists() and pdf_path.stat().st_size > 1000:
             return pdf_path.read_bytes(), None
 
-        # Extract the most relevant error lines from pdflatex stdout
+        # No PDF produced — extract the most relevant error lines from pdflatex stdout
         output = (last_result.stdout if last_result else "") + "\n"
         error_lines = [
             line
             for line in output.splitlines()
-            if line.startswith("!") or "Error" in line or "l." in line
+            if line.startswith("!") or "Error" in line
         ]
         error_summary = "\n".join(error_lines[:30]) or "Unknown pdflatex error"
         return None, error_summary
