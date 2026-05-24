@@ -1,0 +1,21 @@
+# Python
+backend/venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# LaTeX compilation artifacts
+*.aux
+*.log
+*.out
+*.pdf.tmp
+
+# OS
+.DS_Store
+

@@ -1,0 +1,279 @@
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[colorlinks = true,
+            linkcolor = red,
+            urlcolor  = blue,
+            citecolor = blue,
+            anchorcolor = blue]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\usepackage{fontawesome5}
+\usepackage{multicol}
+\setlength{\multicolsep}{-3.0pt}
+\setlength{\columnsep}{-1pt}
+\input{glyphtounicode}
+
+
+%----------FONT OPTIONS----------
+% sans-serif
+% \usepackage[sfdefault]{FiraSans}
+% \usepackage[sfdefault]{roboto}
+% \usepackage[sfdefault]{noto-sans}
+% \usepackage[default]{sourcesanspro}
+
+% serif
+% \usepackage{CormorantGaramond}
+% \usepackage{charter}
+
+\hypersetup{pdfborder = 0 0 0}
+\pagestyle{fancy}
+\fancyhf{} % clear all header and footer fields
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% Adjust margins
+\addtolength{\oddsidemargin}{-0.6in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1.19in}
+\addtolength{\topmargin}{-.7in}
+\addtolength{\textheight}{1.4in}
+
+\urlstyle{same}
+
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+% Sections formatting
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large\bfseries
+}{}{0em}{}[\color{black}\titlerule \vspace{-5pt}]
+
+% Ensure that generate pdf is machine readable/ATS parsable
+\pdfgentounicode=1
+
+%-------------------------
+% Custom commands
+\newcommand{\resumeItem}[1]{
+  \item\small{
+    {#1 \vspace{-2pt}}
+  }
+}
+
+\newcommand{\classesList}[4]{
+    \item\small{
+        {#1 #2 #3 #4 \vspace{-2pt}}
+  }
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{1.0\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & \textbf{\small #2} \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubSubheading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \textit{\small#1} & \textit{\small #2} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \item
+    \begin{tabular*}{1.001\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & \textbf{\small #2}\\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubItem}[1]{\resumeItem{#1}\vspace{-4pt}}
+
+\renewcommand\labelitemi{$\vcenter{\hbox{\tiny$\bullet$}}$}
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.0in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+
+
+\begin{document}
+
+\begin{center}
+    {\Huge \scshape VED M PAWAR} \\ \vspace{1pt}
+    \small
+    \raisebox{-0.1\height}\faPhone\ +91-7829438056 ~
+    {\faEnvelope\ vedpawar1410@gmail.com} ~ 
+    \href{https://www.linkedin.in/in/ved-pawar-27bab6219/}{\faLinkedin\ VedLinkedIn}  ~
+    \href{https://github.com/VedPawar1410}{\faGithub\ VedPawar1410}
+    \vspace{-2pt}
+    \raisebox{-0.5\height}{\Large \scshape Software Engineer — Full Stack | Java | Cloud | LLMs | RAG} \\ \vspace{1pt}
+    \vspace{-4pt}
+\end{center}
+\vspace{-10pt}
+%-----------EDUCATION-----------
+\section{Education}
+  \resumeSubHeadingListStart
+    \resumeSubheading
+      {Vellore Institute of Technology, Vellore}{September 2021 - July 2025}
+      {B.Tech in Computer Science and Engineering }{CGPA: 8.69/10.0}
+      \vspace{-3pt}
+    \resumeSubheading
+      {Bangalore International Academy, Bangalore}{2021}
+      {Class XII (CBSE)}{Percentage: 90}
+  \resumeSubHeadingListEnd
+\vspace{-9pt} 
+
+%-----------SKILLS-----------
+\section{Technical Skills}
+ \resumeSubHeadingListStart
+ \resumeItemListStart
+    \vspace{-6pt}
+    \resumeItem{\textbf{Languages:} \textbf{C++}, \textbf{Java}, \textbf{Python}, C\#, JavaScript (ES6+), TypeScript, SQL, Bash/Shell}
+    \resumeItem{\textbf{Frameworks \& Libraries:} Spring Boot, Flask, React, Node.js, TensorFlow, PyTorch, JUnit, Pandas, NumPy}
+    \resumeItem{\textbf{Engineering Practices:} \textbf{Telemetry \& Logging}, \textbf{Secure Coding}, Code Reviews, CI/CD, TDD, Agile/Scrum}
+    \resumeItem{\textbf{System Design:} \textbf{Microservices}, \textbf{Distributed Systems}, REST vs gRPC, Load Balancing, Caching, CAP Theorem}
+    \resumeItem{\textbf{Cloud \& Tools:} \textbf{GCP}, AWS, Azure, Docker, Kubernetes, Git, GitHub Actions, JIRA, Postman, Linux/Unix}
+ \resumeItemListEnd
+ \resumeSubHeadingListEnd
+\vspace{-15pt} 
+
+%-----------EXPERIENCE-----------
+\section{Experience}
+  \resumeSubHeadingListStart
+\vspace{2pt} 
+    % --- GOOGLE ENTRY ---
+    % \resumeSubheading
+    %   {Google Cloud Computing Internship $|$ \href{https://drive.google.com/file/d/1MAo409atYlEc0r7xfwe3ebBejDC5iZs-/view?usp=sharing}{\faExternalLink*} }{September 2023 -- December 2023}
+    %   {Google Cloud Intern}{Remote}
+    %   \resumeItemListStart
+    %     \resumeItem {Architected and implemented \textbf{scalable cloud features} on \textbf{Google Cloud Platform (GCP)}, creating detailed \textbf{design documents} to facilitate cross-team integration.}
+    %     \resumeItem {Participated in rigorous \textbf{code reviews} and applied \textbf{security best practices} (IAM policies, encryption) to ensure compliance with engineering standards.}
+    %   \resumeItemListEnd
+
+    % --- GENERAL MOTORS ENTRY (Now inside the same list) ---
+    \resumeSubheading
+      {General Motors Internship $|$ \href{https://drive.google.com/file/d/1wPW7Xd1MR7GAHB4pnqqRBl44Lqo6sTeT/view?usp=sharing}{\faExternalLink*}}{August 2023 -- November 2023}
+      {Machine Learning Intern}{Bangalore}
+      \resumeItemListStart
+        \resumeItem {Developed Python automation scripts to proactively flag quality issues, collaborating with global stakeholders to refine \textbf{product features}.}
+        \resumeItem {Documented technical specifications and user guides, facilitating the onboarding of new team members and ensuring long-term maintainability.}
+      \resumeItemListEnd
+
+  \resumeSubHeadingListEnd
+\vspace{-10pt}
+
+
+%-----------PROJECTS-----------
+\section{Projects}
+    \vspace{-3pt}
+    \resumeSubHeadingListStart
+
+% === PROJECT TEMPLATE ===
+
+\resumeProjectHeading
+    {\textbf{AI-Powered Adaptive Personality Engine and Memory System} $|$ 
+    \href{https://github.com/VedPawar1410/memory-extraction}{\faGithub}  $|$ \href{https://ai-companion-3vq4.onrender.com/}{\faExternalLink*}}{December '2025}
+    \vspace{-13pt}
+    \resumeItemListStart
+        \resumeItem{Designed and deployed a modular AI agent capability of long-term memory extraction from unstructured chat logs using Gemini 2.0 Flash and Pydantic for structured output validation.}
+        \resumeItem{Engineered a "Personality Transformation" pipeline that dynamically alters the AI's response tone based on extracted user context, improving user engagement.}
+        \resumeItem{Containerized the application using Docker and automated the CI/CD deployment pipeline to Render, ensuring scalable and reliable cloud hosting.}
+    \resumeItemListEnd
+\vspace{-16pt}
+    
+\resumeProjectHeading
+    {\textbf{Sentiment Analysis of Online Reviews } $|$ 
+    \href{https://github.com/VedPawar1410/sentiment-analysis-web-app}{\faGithub}  $|$ \href{https://veds-sentiment-analysis-app.onrender.com/}{\faExternalLink*}}{July'2024}
+    \vspace{-13pt}
+    \resumeItemListStart
+        \resumeItem{Architected a \textbf{Full Stack} web application using \textbf{Python (Flask)} and \textbf{Java} principles, adhering to MVC design patterns.} 
+        
+        \resumeItem{Implemented a \textbf{secure RESTful API} with rate limiting and input validation to prevent common security vulnerabilities.}
+    \resumeItemListEnd
+\vspace{-18pt}
+
+\resumeProjectHeading
+    {\textbf{AI based Autonomous Surveillance System using Deep Learning} $|$ \href{https://github.com/VedPawar1410/ai-autonomous-surveillance-system}{\faGithub}}{January'2025}
+    \vspace{-13pt}
+    \resumeItemListStart
+        \resumeItem{Developed an AI-powered surveillance system utilizing \textbf{Computer Vision} (YOLOv8, Faster R-CNN) for real-time anomaly detection.}
+        \resumeItem{Optimized inference latency by 30\% through model quantization and multi-threading, enabling real-time processing on edge devices.}
+        \resumeItem{Achieved 84.45\% AUC on the UCF-Crime dataset by iteratively testing architectural design options and validating hypotheses.}
+    \resumeItemListEnd
+\vspace{-16pt}
+
+\resumeProjectHeading
+    {\textbf{Anomaly Detection in Wearable Sensor Data using Machine Learning} $|$ \href{https://github.com/VedPawar1410/Anomaly-Detection-in-Wearable-Sensor-Data}{\faGithub}}{August'2024}
+     
+    \vspace{-13pt}
+    \resumeItemListStart
+        \resumeItem{Designed a robust anomaly detection pipeline for the PAMAP2 dataset, applying \textbf{least-access principles} to sensitive health data.}
+        \resumeItem{Optimized data processing algorithms to $O(n \log n)$ complexity, ensuring the solution met \textbf{performance} and scalability requirements for high-frequency sensor streams.}
+    \resumeItemListEnd
+
+
+\vspace{-2pt}
+
+%-----------CERTIFICATIONS-----------
+\section{Certifications}
+\textbf{Google Cloud Digital Leader}\hspace{179pt} {Issued by Google}\hfill \textit{\href{https://drive.google.com/file/d/1MAo409atYlEc0r7xfwe3ebBejDC5iZs-/view?usp=sharing}{\raisebox{2\width}\ {View Certification}}}
+        \vspace{0pt}    \\ %<-- TIGHTENED
+\textbf{AWS Cloud Practitioner Essentials} \hspace{140pt} {Issued by AWS}\hfill \textit{\href{https://drive.google.com/file/d/1lySTuNABZx2dk_KQR1cARGCU_EWt64Nj/view?usp=drive_link}{\raisebox{2\width}\ {View Certification}}}
+        \vspace{0pt} \\
+\textbf{Neural Networks and Deep Learning} \hspace{140pt} {Issued by Coursera}\hfill \textit{\href{https://drive.google.com/file/d/15HHSLo_F_7ToUwS7QXiaLBuu74pYt8YA/view?usp=sharing}{\raisebox{2\width}\ {View Certification}}}
+        \vspace{0pt}
+        %<-- TIGHTENED
+
+\end{document}
+
+\resumeProjectHeading
+    {\textbf{Sentiment Analysis of Online Reviews } $|$ 
+    \href{https://github.com/VedPawar1410/Sentiment-Analysis.git}{\faGithub}}{July'2024}
+    \vspace{-6pt}
+    \resumeItemListStart
+        \resumeItem{Developed a \textbf{Full Stack} web application using \textbf{Python}, \textbf{Flask}, and machine learning, with a \textbf{React}-compatible frontend (HTML/CSS/JS).}
+        \resumeItem{Built a \textbf{scalable RESTful backend} and \textbf{API design} to serve a prediction model, enabling real-time classification.}
+    \resumeItemListEnd
+\vspace{-8pt}
+
+\resumeProjectHeading
+    {\textbf{AI based Autonomous Surveillance System using Deep Learning} $|$ \href{https://github.com/VedPawar1410/ai-autonomous-surveillance-system}{\faGithub}}{January'2025}
+    \vspace{-6pt}
+    \resumeItemListStart
+        \resumeItem{Developed and deployed an AI-powered surveillance system integrating YOLOv8, Faster R-CNN, and a custom I3D two-stream model for real-time object detection and anomaly detection.}
+        \resumeItem{Achieved 84.45 percent AUC for anomaly detection on the UCF-Crime dataset, outperforming established baselines and demonstrating robust performance in complex surveillance scenarios.}
+    \resumeItemListEnd
+\vspace{-8pt}
+
+\resumeProjectHeading
+    {\textbf{Anomaly Detection in Wearable Sensor Data using Machine Learning} $|$ \href{https://github.com/VedPawar1410/Anomaly-Detection-in-Wearable-Sensor-Data}{\faGithub}}{August'2024}
+     
+    \vspace{-6pt}
+    \resumeItemListStart
+        \resumeItem{Designed a robust anomaly detection system for the PAMAP2 dataset using Random Forest models, focusing on wearable sensor data.}
+        \resumeItem{Built a Random Forest-based anomaly detection pipeline optimized for real-time inference. Preprocessed and modeled 10k+ data rows with $O(n \log n)$ preprocessing steps for efficiency.}
+    \resumeItemListEnd
+\vspace{-8pt}
+
+\resumeProjectHeading
+    {\textbf{Calculator Web Application } $|$ 
+    \href{https://github.com/VedPawar1410/Calculator}{\faGithub} $|$ 
+    \href{https://vedpawar1410.github.io/Calculator/}{\faCalculator}}{September'2025}
+    \vspace{-6pt} % <-- adds small gap between heading and bullets
+    \resumeItemListStart
+        \resumeItem{Developed a responsive calculator web app using HTML, CSS, and \textbf{JavaScript (ES6+)}, demonstrating core frontend principles.}
+        \resumeItem{Implemented core arithmetic operations with reusable functions, leveraging DOM manipulation, event-driven programming, and flexbox layouts to deliver an efficient and user-friendly design.}
+    \resumeItemListEnd
+\vspace{-2pt}

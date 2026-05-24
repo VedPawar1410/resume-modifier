@@ -1,0 +1,4 @@
+There are some scenarios that I have in mind and I am confused how that should be proceeded with our tool:
+a. If the user is a first time resume maker, then he/she will have to input all their resume sections like Education, Skills, Experience, Projects, Certifications, LinkedIN, etc etc. Which will then be made into a PDF for them, then later they can use that to fine tune their PDF with any Job Description that they have.
+b. If the user already has a resume, then they can directly upload that resume, can extract the information from that resume, and then fine tune that resume wrt the job description.
+c. If the user has the latex code of their resume, then it becomes more easier I suppose to make the fine tuned resume wrt the job description.
