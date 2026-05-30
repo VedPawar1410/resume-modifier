@@ -35,5 +35,12 @@ export interface ModifyResponse {
   retry_count: number;
 }
 
+export interface CompileResponse {
+  success: boolean;
+  pdf_base64?: string;
+  compilation_errors?: string;
+}
+
 export type AppMode = "tailor" | "refine";
 export type AppStatus = "idle" | "loading" | "success" | "error";
+export type RecompileStatus = "idle" | "loading" | "error";
