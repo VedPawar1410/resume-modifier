@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { resumeApi } from "./api/resumeApi";
+import { HistorySidebar } from "./components/HistorySidebar";
 import { JobDescriptionInput } from "./components/JobDescriptionInput";
 import { LaTeXInput } from "./components/LaTeXInput";
 import { ModeSelector } from "./components/ModeSelector";
@@ -21,6 +22,8 @@ export default function App() {
   const [targetSection, setTargetSection] = useState("");
   const [newEntry, setNewEntry] = useState<NewEntryPayload>({});
   const [pdflatexAvailable, setPdflatexAvailable] = useState<boolean | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyVersion, setHistoryVersion] = useState(0);
 
   const { submit, result, status, error, pdfUrl, downloadPdf, recompile, recompileStatus } = useModifyResume();
 
@@ -52,6 +55,13 @@ export default function App() {
         ? { job_description: jobDescription, sections_to_modify: sectionsToModify }
         : { target_section: targetSection, new_entry: newEntry }),
     });
+
+    setHistoryVersion((v) => v + 1);
+  };
+
+  const handleRestoreFromHistory = (latex: string) => {
+    setLatexCode(latex);
+    setHistoryOpen(false);
   };
 
   return (
@@ -67,81 +77,90 @@ export default function App() {
         )}
       </header>
 
-      <main className="app-main">
-        <section className="input-panel">
-          <ModeSelector mode={mode} onChange={(m) => { setMode(m); setNewEntry({}); setTargetSection(""); }} />
+      <div className="app-body">
+        <HistorySidebar
+          isOpen={historyOpen}
+          onToggle={() => setHistoryOpen((o) => !o)}
+          onRestore={handleRestoreFromHistory}
+          version={historyVersion}
+        />
 
-          <LaTeXInput value={latexCode} onChange={setLatexCode} />
+        <main className="app-main">
+          <section className="input-panel">
+            <ModeSelector mode={mode} onChange={(m) => { setMode(m); setNewEntry({}); setTargetSection(""); }} />
 
-          {mode === "tailor" && (
-            <>
-              <JobDescriptionInput value={jobDescription} onChange={setJobDescription} />
-              <SectionCheckboxes
+            <LaTeXInput value={latexCode} onChange={setLatexCode} />
+
+            {mode === "tailor" && (
+              <>
+                <JobDescriptionInput value={jobDescription} onChange={setJobDescription} />
+                <SectionCheckboxes
+                  latexCode={latexCode}
+                  selected={sectionsToModify}
+                  onChange={setSectionsToModify}
+                />
+              </>
+            )}
+
+            {mode === "refine" && (
+              <RefineForm
                 latexCode={latexCode}
-                selected={sectionsToModify}
-                onChange={setSectionsToModify}
+                targetSection={targetSection}
+                onSectionChange={setTargetSection}
+                entry={newEntry}
+                onEntryChange={setNewEntry}
               />
-            </>
-          )}
+            )}
 
-          {mode === "refine" && (
-            <RefineForm
-              latexCode={latexCode}
-              targetSection={targetSection}
-              onSectionChange={setTargetSection}
-              entry={newEntry}
-              onEntryChange={setNewEntry}
-            />
-          )}
+            <StatusBanner status={status} error={error} />
 
-          <StatusBanner status={status} error={error} />
+            <button
+              className="btn-primary btn-submit"
+              onClick={handleSubmit}
+              disabled={status === "loading"}
+            >
+              {status === "loading"
+                ? "⏳ Working…"
+                : mode === "tailor"
+                ? "🎯 Tailor Resume"
+                : "✏️ Update Resume"}
+            </button>
+          </section>
 
-          <button
-            className="btn-primary btn-submit"
-            onClick={handleSubmit}
-            disabled={status === "loading"}
-          >
-            {status === "loading"
-              ? "⏳ Working…"
-              : mode === "tailor"
-              ? "🎯 Tailor Resume"
-              : "✏️ Update Resume"}
-          </button>
-        </section>
-
-        <section className="output-column">
-          {status === "success" && result ? (
-            <OutputPanel
-              result={result}
-              pdfUrl={pdfUrl}
-              onDownloadPdf={downloadPdf}
-              recompile={recompile}
-              recompileStatus={recompileStatus}
-            />
-          ) : (
-            <div className="output-placeholder">
-              <div className="placeholder-icon">📋</div>
-              <p>Your modified resume will appear here after you submit.</p>
-              {mode === "tailor" && (
-                <ul className="placeholder-tips">
-                  <li>Paste your LaTeX resume on the left</li>
-                  <li>Add the job description</li>
-                  <li>Choose which sections to tailor</li>
-                  <li>Click <strong>Tailor Resume</strong></li>
-                </ul>
-              )}
-              {mode === "refine" && (
-                <ul className="placeholder-tips">
-                  <li>Paste your LaTeX resume on the left</li>
-                  <li>Select the section to update</li>
-                  <li>Fill in the details</li>
-                  <li>Click <strong>Update Resume</strong></li>
-                </ul>
-              )}
-            </div>
-          )}
-        </section>
-      </main>
+          <section className="output-column">
+            {status === "success" && result ? (
+              <OutputPanel
+                result={result}
+                pdfUrl={pdfUrl}
+                onDownloadPdf={downloadPdf}
+                recompile={recompile}
+                recompileStatus={recompileStatus}
+              />
+            ) : (
+              <div className="output-placeholder">
+                <div className="placeholder-icon">📋</div>
+                <p>Your modified resume will appear here after you submit.</p>
+                {mode === "tailor" && (
+                  <ul className="placeholder-tips">
+                    <li>Paste your LaTeX resume on the left</li>
+                    <li>Add the job description</li>
+                    <li>Choose which sections to tailor</li>
+                    <li>Click <strong>Tailor Resume</strong></li>
+                  </ul>
+                )}
+                {mode === "refine" && (
+                  <ul className="placeholder-tips">
+                    <li>Paste your LaTeX resume on the left</li>
+                    <li>Select the section to update</li>
+                    <li>Fill in the details</li>
+                    <li>Click <strong>Update Resume</strong></li>
+                  </ul>
+                )}
+              </div>
+            )}
+          </section>
+        </main>
+      </div>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel, field_validator
 from typing import Literal, Optional
 
@@ -52,3 +53,19 @@ class ModifyResponse(BaseModel):
     ai_error: Optional[str] = None
     sections_modified: list[str] = []
     retry_count: int = 0
+
+
+class HistoryRecord(BaseModel):
+    id: int
+    created_at: datetime
+    mode: str
+    label: str
+    job_description_preview: Optional[str] = None
+    sections_modified: list[str]
+
+    model_config = {"from_attributes": True}
+
+
+class HistoryListResponse(BaseModel):
+    records: list[HistoryRecord]
+    total: int

@@ -1,19 +1,30 @@
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import compile, health, modify
+from database import close_db, init_db
+from routers import compile, health, history, modify
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    yield
+    await close_db()
+
+
 app = FastAPI(
     title="Resume Modifier API",
     description="AI-powered resume tailoring and refinement tool",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -31,6 +42,7 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(modify.router)
 app.include_router(compile.router)
+app.include_router(history.router)
 
 
 @app.get("/")

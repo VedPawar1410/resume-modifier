@@ -16,6 +16,9 @@ frontend/.vite/
 *.out
 *.pdf.tmp
 
+# Database
+backend/resume_history.db
+
 # OS
 .DS_Store
 

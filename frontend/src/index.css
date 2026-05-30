@@ -38,17 +38,174 @@ body {
 .app-header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; }
 .subtitle { color: var(--text-muted); font-size: 0.9rem; margin-top: 2px; }
 
+.app-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .app-main {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0;
   flex: 1;
   min-height: 0;
+  min-width: 0;
 }
 
 @media (max-width: 900px) {
   .app-main { grid-template-columns: 1fr; }
+  .history-sidebar { display: none; }
 }
+
+/* ── History sidebar ────────────────────────────────────────────────────── */
+.history-sidebar {
+  display: flex;
+  flex-direction: row;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  transition: width 0.2s ease;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.history-sidebar--open  { width: 300px; }
+.history-sidebar--closed { width: 36px; }
+
+.history-sidebar__toggle {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 6px;
+  width: 36px;
+  min-width: 36px;
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+.history-sidebar__toggle:hover { color: var(--text); background: var(--surface-2); }
+.history-sidebar__toggle-icon  { font-size: 0.65rem; writing-mode: horizontal-tb; }
+.history-sidebar__toggle-label { font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; }
+
+.history-sidebar__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.history-sidebar__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.history-sidebar__header h2 { font-size: 0.95rem; font-weight: 700; }
+
+.history-sidebar__state {
+  padding: 16px;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.history-sidebar__empty {
+  flex-direction: column;
+  text-align: center;
+  padding: 32px 16px;
+  gap: 6px;
+  line-height: 1.5;
+}
+
+/* ── History list ───────────────────────────────────────────────────────── */
+.history-list {
+  list-style: none;
+  overflow-y: auto;
+  flex: 1;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.history-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.history-card:hover { border-color: var(--accent); }
+
+.history-card__restore-btn {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 10px 12px 6px;
+  cursor: pointer;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.history-card__restore-btn:disabled { opacity: 0.6; cursor: wait; }
+.history-card__restore-btn:hover { background: var(--accent-bg); }
+
+.history-card__label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.history-card__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.history-card__sections {
+  color: var(--accent);
+  font-size: 0.7rem;
+}
+.history-card__jd-preview {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  font-style: italic;
+}
+
+.history-card__actions {
+  display: flex;
+  gap: 4px;
+  padding: 4px 8px 8px;
+}
+.history-card__pdf-btn,
+.history-card__delete-btn {
+  font-size: 0.72rem;
+  padding: 3px 8px;
+  text-decoration: none;
+}
+.history-card__delete-btn:hover { border-color: var(--error); color: var(--error); }
 
 /* ── Input panel ────────────────────────────────────────────────────────── */
 .input-panel {

@@ -1,8 +1,13 @@
 import base64
+import json
 import logging
+from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from database import get_db
+from models.resume_record import ResumeRecord
 from models.schemas import ModifyRequest, ModifyResponse
 from services.ai_service import (
     AIServiceError,
@@ -24,7 +29,10 @@ DEFAULT_TAILOR_SECTIONS = ["Experience", "Projects", "Technical Skills"]
 
 
 @router.post("/api/modify", response_model=ModifyResponse)
-async def modify_resume(request: ModifyRequest) -> ModifyResponse:
+async def modify_resume(
+    request: ModifyRequest,
+    db: AsyncSession = Depends(get_db),
+) -> ModifyResponse:
     """
     Main endpoint for both Tailor and Refine modes.
 
@@ -121,7 +129,6 @@ async def modify_resume(request: ModifyRequest) -> ModifyResponse:
     if pdf_bytes is not None:
         pdf_base64 = base64.b64encode(pdf_bytes).decode("utf-8")
     else:
-        # Compilation failed even after retries — still return the LaTeX so the user can see it
         compilation_errors = (
             "PDF compilation failed after retries. "
             "The modified LaTeX is returned so you can inspect it. "
@@ -129,7 +136,7 @@ async def modify_resume(request: ModifyRequest) -> ModifyResponse:
         )
         logger.warning(f"PDF compilation failed for sections: {sections_modified}")
 
-    return ModifyResponse(
+    response = ModifyResponse(
         success=True,
         modified_latex=final_latex,
         pdf_base64=pdf_base64,
@@ -137,3 +144,27 @@ async def modify_resume(request: ModifyRequest) -> ModifyResponse:
         sections_modified=sections_modified,
         retry_count=retry_count,
     )
+
+    # ── Auto-save to history DB ──────────────────────────────────────────────
+    if response.success and response.modified_latex:
+        try:
+            now = datetime.now(timezone.utc)
+            prefix = "Tailored" if request.mode == "tailor" else "Refined"
+            label = f"{prefix} Resume · {now.strftime('%b %-d %Y')}"
+            jd_preview = (request.job_description or "")[:100] or None
+            record = ResumeRecord(
+                created_at=now,
+                mode=request.mode,
+                label=label,
+                job_description_preview=jd_preview,
+                sections_modified=json.dumps(sections_modified),
+                modified_latex=final_latex,
+                pdf_bytes=pdf_bytes,
+            )
+            db.add(record)
+            await db.commit()
+            logger.info(f"Saved resume to history (id will be assigned by DB)")
+        except Exception:
+            logger.exception("History save failed — continuing without saving")
+
+    return response

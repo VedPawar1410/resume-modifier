@@ -44,3 +44,17 @@ export interface CompileResponse {
 export type AppMode = "tailor" | "refine";
 export type AppStatus = "idle" | "loading" | "success" | "error";
 export type RecompileStatus = "idle" | "loading" | "error";
+
+export interface HistoryRecord {
+  id: number;
+  created_at: string;
+  mode: "tailor" | "refine";
+  label: string;
+  job_description_preview?: string;
+  sections_modified: string[];
+}
+
+export interface HistoryListResponse {
+  records: HistoryRecord[];
+  total: number;
+}
