@@ -22,7 +22,7 @@ export default function App() {
   const [newEntry, setNewEntry] = useState<NewEntryPayload>({});
   const [pdflatexAvailable, setPdflatexAvailable] = useState<boolean | null>(null);
 
-  const { submit, result, status, error, downloadPdf } = useModifyResume();
+  const { submit, result, status, error, pdfUrl, downloadPdf, recompile, recompileStatus } = useModifyResume();
 
   useEffect(() => {
     resumeApi
@@ -111,7 +111,13 @@ export default function App() {
 
         <section className="output-column">
           {status === "success" && result ? (
-            <OutputPanel result={result} onDownloadPdf={downloadPdf} />
+            <OutputPanel
+              result={result}
+              pdfUrl={pdfUrl}
+              onDownloadPdf={downloadPdf}
+              recompile={recompile}
+              recompileStatus={recompileStatus}
+            />
           ) : (
             <div className="output-placeholder">
               <div className="placeholder-icon">📋</div>

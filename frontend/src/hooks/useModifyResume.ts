@@ -1,13 +1,24 @@
 import { useState } from "react";
 import { resumeApi } from "../api/resumeApi";
-import type { AppStatus, ModifyRequest, ModifyResponse } from "../types";
+import type { AppStatus, ModifyRequest, ModifyResponse, RecompileStatus } from "../types";
+
+function base64ToBlobUrl(b64: string): string {
+  const bytes = atob(b64);
+  const arr = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  const blob = new Blob([arr], { type: "application/pdf" });
+  return URL.createObjectURL(blob);
+}
 
 interface UseModifyResumeReturn {
   submit: (request: ModifyRequest) => Promise<void>;
   result: ModifyResponse | null;
   status: AppStatus;
   error: string | null;
+  pdfUrl: string | null;
   downloadPdf: () => void;
+  recompile: (latex: string) => Promise<void>;
+  recompileStatus: RecompileStatus;
 }
 
 export function useModifyResume(): UseModifyResumeReturn {
@@ -15,30 +26,33 @@ export function useModifyResume(): UseModifyResumeReturn {
   const [status, setStatus] = useState<AppStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [recompileStatus, setRecompileStatus] = useState<RecompileStatus>("idle");
+
+  const updatePdfUrl = (b64: string) => {
+    setPdfUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return base64ToBlobUrl(b64);
+    });
+  };
 
   const submit = async (request: ModifyRequest) => {
     setStatus("loading");
     setError(null);
     setResult(null);
+    setRecompileStatus("idle");
 
-    // Clean up any previous blob URL
-    if (pdfUrl) {
-      URL.revokeObjectURL(pdfUrl);
-      setPdfUrl(null);
-    }
+    // Revoke any existing blob URL before the new request
+    setPdfUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
 
     try {
       const response = await resumeApi.modify(request);
       setResult(response);
-
       if (response.pdf_base64) {
-        const bytes = atob(response.pdf_base64);
-        const arr = new Uint8Array(bytes.length);
-        for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
-        const blob = new Blob([arr], { type: "application/pdf" });
-        setPdfUrl(URL.createObjectURL(blob));
+        updatePdfUrl(response.pdf_base64);
       }
-
       setStatus("success");
     } catch (err: unknown) {
       const msg =
@@ -51,6 +65,21 @@ export function useModifyResume(): UseModifyResumeReturn {
     }
   };
 
+  const recompile = async (latex: string) => {
+    setRecompileStatus("loading");
+    try {
+      const resp = await resumeApi.compile(latex);
+      if (resp.pdf_base64) {
+        updatePdfUrl(resp.pdf_base64);
+        setRecompileStatus("idle");
+      } else {
+        setRecompileStatus("error");
+      }
+    } catch {
+      setRecompileStatus("error");
+    }
+  };
+
   const downloadPdf = () => {
     if (!pdfUrl) return;
     const a = document.createElement("a");
@@ -59,5 +88,5 @@ export function useModifyResume(): UseModifyResumeReturn {
     a.click();
   };
 
-  return { submit, result, status, error, downloadPdf };
+  return { submit, result, status, error, pdfUrl, downloadPdf, recompile, recompileStatus };
 }
