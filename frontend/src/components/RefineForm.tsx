@@ -38,7 +38,7 @@ export function RefineForm({ latexCode, targetSection, onSectionChange, entry, o
 
   return (
     <div className="field-group">
-      <label className="field-label">Section to Update</label>
+      <label className="field-label">Section to update</label>
       <select
         value={targetSection}
         onChange={(e) => onSectionChange(e.target.value)}

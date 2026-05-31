@@ -6,7 +6,7 @@ interface Props {
 export function JobDescriptionInput({ value, onChange }: Props) {
   return (
     <div className="field-group">
-      <label className="field-label">Job Description</label>
+      <label className="field-label">Job description</label>
       <textarea
         className="jd-textarea"
         value={value}

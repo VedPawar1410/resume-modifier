@@ -31,18 +31,26 @@ export function SectionCheckboxes({ latexCode, selected, onChange }: Props) {
 
   return (
     <div className="field-group">
-      <label className="field-label">Sections to Tailor</label>
+      <div className="field-header">
+        <label className="field-label">Sections to tailor</label>
+        <span className="char-count">{selected.length} selected</span>
+      </div>
       <div className="checkbox-grid">
-        {sections.map((name) => (
-          <label key={name} className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={selected.includes(name)}
-              onChange={() => toggle(name)}
-            />
-            {name}
-          </label>
-        ))}
+        {sections.map((name) => {
+          const isSelected = selected.includes(name);
+          return (
+            <button
+              key={name}
+              type="button"
+              className={`chip ${isSelected ? "chip--selected" : ""}`}
+              onClick={() => toggle(name)}
+              aria-pressed={isSelected}
+            >
+              <span className="chip__check">{isSelected ? "✓" : ""}</span>
+              {name}
+            </button>
+          );
+        })}
       </div>
       <p className="hint">Select which sections AI should rewrite for this job.</p>
     </div>

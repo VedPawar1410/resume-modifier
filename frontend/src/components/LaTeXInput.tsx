@@ -27,9 +27,9 @@ export function LaTeXInput({ value, onChange }: Props) {
   return (
     <div className="field-group">
       <div className="field-header">
-        <label className="field-label">Your Resume (LaTeX Code)</label>
-        <button className="btn-ghost" onClick={loadSample} disabled={loading}>
-          {loading ? "Loading…" : "Load my sample"}
+        <label className="field-label">Your resume (LaTeX)</label>
+        <button className="btn-text" onClick={loadSample} disabled={loading}>
+          {loading ? "Loading…" : "Load sample"}
         </button>
       </div>
       <textarea

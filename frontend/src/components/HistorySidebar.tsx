@@ -13,7 +13,6 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
     month: "short",
     day: "numeric",
-    year: "numeric",
     hour: "numeric",
     minute: "2-digit",
   });
@@ -48,7 +47,7 @@ export function HistorySidebar({ isOpen, onToggle, onRestore, version }: Props) 
       await resumeApi.deleteHistory(id);
       setRecords((prev) => prev.filter((r) => r.id !== id));
     } catch {
-      // silently ignore — record may have already been deleted
+      // silently ignore
     }
   };
 
@@ -66,41 +65,50 @@ export function HistorySidebar({ isOpen, onToggle, onRestore, version }: Props) 
 
   return (
     <aside className={`history-sidebar ${isOpen ? "history-sidebar--open" : "history-sidebar--closed"}`}>
+      {/* Collapsed toggle — icon only */}
       <button
         className="history-sidebar__toggle"
         onClick={onToggle}
-        aria-label={isOpen ? "Close history sidebar" : "Open history sidebar"}
+        aria-label={isOpen ? "Close history" : "Open history"}
         title="Resume history"
       >
-        <span className="history-sidebar__toggle-icon">{isOpen ? "◀" : "▶"}</span>
-        {!isOpen && <span className="history-sidebar__toggle-label">History</span>}
+        <div className="history-sidebar__toggle-icon">
+          {isOpen ? "←" : "☰"}
+        </div>
       </button>
 
       {isOpen && (
         <div className="history-sidebar__body">
           <div className="history-sidebar__header">
-            <h2>History</h2>
-            <button className="btn-ghost" onClick={load} title="Refresh" aria-label="Refresh history">
-              ↻
+            <h2>Recent</h2>
+            <button
+              className="btn-text"
+              onClick={load}
+              title="Refresh"
+              aria-label="Refresh history"
+              style={{ padding: "4px 8px", height: "auto", fontSize: "0.75rem" }}
+            >
+              ↻ Refresh
             </button>
           </div>
 
           {loading && (
             <div className="history-sidebar__state">
-              Loading…
+              <span className="spinner" style={{ width: 14, height: 14 }} /> Loading…
             </div>
           )}
 
           {error && (
-            <div className="banner banner-error" style={{ margin: "12px" }}>
+            <div className="banner banner-error" style={{ margin: "8px 12px", fontSize: "0.8rem" }}>
               {error}
             </div>
           )}
 
           {!loading && !error && records.length === 0 && (
             <div className="history-sidebar__state history-sidebar__empty">
-              <p>No saved resumes yet.</p>
-              <p>Submit a modification to start building history.</p>
+              <span style={{ fontSize: "1.5rem" }}>📂</span>
+              <p style={{ fontWeight: 500, color: "var(--text)" }}>No history yet</p>
+              <p style={{ fontSize: "0.8125rem" }}>Submit a modification to start building history.</p>
             </div>
           )}
 
@@ -117,7 +125,7 @@ export function HistorySidebar({ isOpen, onToggle, onRestore, version }: Props) 
                     {restoringId === record.id ? "Loading…" : record.label}
                   </div>
                   <div className="history-card__meta">
-                    <span className="history-card__date">{formatDate(record.created_at)}</span>
+                    <span>{formatDate(record.created_at)}</span>
                     {record.sections_modified.length > 0 && (
                       <span className="history-card__sections">
                         {record.sections_modified.join(", ")}

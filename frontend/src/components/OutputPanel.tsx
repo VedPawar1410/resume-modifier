@@ -1,3 +1,4 @@
+import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import type { ModifyResponse, RecompileStatus } from "../types";
 
@@ -16,14 +17,12 @@ export function OutputPanel({ result, pdfUrl, onDownloadPdf, recompile, recompil
   const [copied, setCopied] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // When a new AI result arrives, reset the editable latex to the fresh output
   useEffect(() => {
     if (result?.modified_latex) {
       setEditableLatex(result.modified_latex);
     }
   }, [result?.modified_latex]);
 
-  // Cleanup debounce timer on unmount
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -32,7 +31,6 @@ export function OutputPanel({ result, pdfUrl, onDownloadPdf, recompile, recompil
 
   const handleLatexChange = (value: string) => {
     setEditableLatex(value);
-    // Debounce recompile: cancel previous timer, start a new one
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => recompile(value), DEBOUNCE_MS);
   };
@@ -46,60 +44,62 @@ export function OutputPanel({ result, pdfUrl, onDownloadPdf, recompile, recompil
 
   if (!result) return null;
 
-  return (
-    <div className="output-panel">
-      <h2 className="output-title">✅ Resume Updated</h2>
+  const sectionCount = result.sections_modified.length;
 
-      {/* Stats row */}
-      <div className="output-stats">
-        <span>
-          Sections modified:{" "}
-          <strong>{result.sections_modified.join(", ") || "none"}</strong>
-        </span>
-        {result.retry_count > 0 && (
-          <span className="retry-badge">
-            🔄 {result.retry_count} retry{result.retry_count > 1 ? "s" : ""}
+  return (
+    <motion.div
+      className="output-panel"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+        <h2 className="output-title">
+          <span style={{ color: "var(--success)", fontSize: "1.1rem" }}>✓</span>
+          Resume Updated
+        </h2>
+        <div className="output-stats">
+          <span className="stat-chip stat-chip--success">
+            {sectionCount} section{sectionCount !== 1 ? "s" : ""} modified
           </span>
-        )}
+          {result.retry_count > 0 && (
+            <span className="stat-chip stat-chip--warning">
+              ↻ {result.retry_count} retr{result.retry_count > 1 ? "ies" : "y"}
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Compilation warning */}
       {result.compilation_errors && (
         <div className="banner banner-warning">
-          ⚠️ <strong>PDF compilation had issues:</strong> {result.compilation_errors}
+          <span>⚠</span>
+          <span><strong>PDF compilation had issues:</strong> {result.compilation_errors}</span>
         </div>
       )}
 
-      {/* Recompilation error */}
       {recompileStatus === "error" && (
         <div className="banner banner-warning">
-          ⚠️ Could not recompile after your edit — check the LaTeX for syntax errors.
+          <span>⚠</span>
+          <span>Could not recompile after your edit — check the LaTeX for syntax errors.</span>
         </div>
       )}
 
-      {/* Download button */}
       {pdfUrl && (
         <button className="btn-primary btn-download" onClick={onDownloadPdf}>
-          ⬇️ Download PDF
+          ↓ Download PDF
         </button>
       )}
 
-      {/* ── PDF Preview ──────────────────────────────────────────────── */}
       {pdfUrl && (
         <div className="pdf-preview-container">
           <div className="pdf-preview-header">
             <span>Preview</span>
             {recompileStatus === "loading" && (
               <span className="recompile-indicator">
-                <span className="spinner spinner-sm" /> Recompiling…
+                <span className="spinner-sm" /> Recompiling…
               </span>
             )}
           </div>
-          {/*
-            Native <embed> renders the PDF directly — no external library needed.
-            key={pdfUrl} forces the embed to reload whenever the blob URL changes
-            (a new blob URL is created after each recompilation).
-          */}
           <embed
             key={pdfUrl}
             src={pdfUrl}
@@ -109,13 +109,12 @@ export function OutputPanel({ result, pdfUrl, onDownloadPdf, recompile, recompil
         </div>
       )}
 
-      {/* ── Editable LaTeX ───────────────────────────────────────────── */}
       {editableLatex && (
         <div className="latex-output-block">
           <div className="latex-output-header">
             <span>LaTeX — edit to fine-tune, preview updates automatically</span>
             <button className="btn-ghost" onClick={copyLatex}>
-              {copied ? "✓ Copied!" : "Copy"}
+              {copied ? "✓ Copied" : "Copy"}
             </button>
           </div>
           <textarea
@@ -127,6 +126,6 @@ export function OutputPanel({ result, pdfUrl, onDownloadPdf, recompile, recompil
           />
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }
