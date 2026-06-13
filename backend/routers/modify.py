@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
+from models.base_resume import BaseResume
 from models.resume_record import ResumeRecord
 from models.schemas import ModifyRequest, ModifyResponse
 from services.ai_service import (
@@ -58,9 +59,19 @@ async def modify_resume(
                 detail="new_entry is required for refine mode",
             )
 
+    # ── Resolve source LaTeX (saved base resume or pasted code) ───────────────
+    base: BaseResume | None = None
+    if request.base_resume_id is not None:
+        base = await db.get(BaseResume, request.base_resume_id)
+        if base is None:
+            raise HTTPException(status_code=404, detail="Base resume not found")
+        source_latex = base.latex_code
+    else:
+        source_latex = request.latex_code  # guaranteed present by the schema validator
+
     # ── Parse LaTeX ──────────────────────────────────────────────────────────
     try:
-        parsed = parse_latex(request.latex_code)
+        parsed = parse_latex(source_latex)
     except LaTeXParseError as e:
         raise HTTPException(status_code=422, detail=f"LaTeX parse error: {e}")
 
@@ -145,26 +156,35 @@ async def modify_resume(
         retry_count=retry_count,
     )
 
-    # ── Auto-save to history DB ──────────────────────────────────────────────
+    # ── Persist result ───────────────────────────────────────────────────────
+    # Refine on a base updates the base in place (the master is the source of truth).
+    # Everything else is saved as an immutable history snapshot.
     if response.success and response.modified_latex:
         try:
-            now = datetime.now(timezone.utc)
-            prefix = "Tailored" if request.mode == "tailor" else "Refined"
-            label = f"{prefix} Resume · {now.strftime('%b %-d %Y')}"
-            jd_preview = (request.job_description or "")[:100] or None
-            record = ResumeRecord(
-                created_at=now,
-                mode=request.mode,
-                label=label,
-                job_description_preview=jd_preview,
-                sections_modified=json.dumps(sections_modified),
-                modified_latex=final_latex,
-                pdf_bytes=pdf_bytes,
-            )
-            db.add(record)
-            await db.commit()
-            logger.info(f"Saved resume to history (id will be assigned by DB)")
+            if request.mode == "refine" and base is not None:
+                base.latex_code = final_latex
+                base.pdf_bytes = pdf_bytes
+                await db.commit()
+                logger.info(f"Updated base resume {base.id} in place")
+            else:
+                now = datetime.now(timezone.utc)
+                prefix = "Tailored" if request.mode == "tailor" else "Refined"
+                base_tag = f" · {base.name}" if base is not None else ""
+                label = f"{prefix} Resume{base_tag} · {now.strftime('%b %-d %Y')}"
+                jd_preview = (request.job_description or "")[:100] or None
+                record = ResumeRecord(
+                    created_at=now,
+                    mode=request.mode,
+                    label=label,
+                    job_description_preview=jd_preview,
+                    sections_modified=json.dumps(sections_modified),
+                    modified_latex=final_latex,
+                    pdf_bytes=pdf_bytes,
+                )
+                db.add(record)
+                await db.commit()
+                logger.info("Saved resume to history (id will be assigned by DB)")
         except Exception:
-            logger.exception("History save failed — continuing without saving")
+            logger.exception("Persist failed — continuing without saving")
 
     return response

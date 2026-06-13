@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
 from models.resume_record import ResumeRecord
-from models.schemas import HistoryListResponse, HistoryRecord
+from models.schemas import HistoryListResponse, HistoryRecord, RenameHistoryRequest
 
 router = APIRouter(prefix="/api/history", tags=["history"])
 
@@ -82,6 +82,21 @@ async def get_history_latex(
     if row is None:
         raise HTTPException(status_code=404, detail="Record not found")
     return {"modified_latex": row.modified_latex}
+
+
+@router.patch("/{record_id}", response_model=HistoryRecord)
+async def rename_history_record(
+    record_id: int,
+    req: RenameHistoryRequest,
+    db: AsyncSession = Depends(get_db),
+) -> HistoryRecord:
+    record = await db.get(ResumeRecord, record_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Record not found")
+    record.label = req.label
+    await db.commit()
+    await db.refresh(record)
+    return _to_schema(record)
 
 
 @router.delete("/{record_id}", status_code=204)

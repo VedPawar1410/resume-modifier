@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import close_db, init_db
-from routers import compile, health, history, modify
+from routers import base_resumes, compile, generate, health, history, modify
 
 logging.basicConfig(
     level=logging.INFO,
@@ -43,6 +43,8 @@ app.include_router(health.router)
 app.include_router(modify.router)
 app.include_router(compile.router)
 app.include_router(history.router)
+app.include_router(base_resumes.router)
+app.include_router(generate.router)
 
 
 @app.get("/")

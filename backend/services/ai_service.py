@@ -23,6 +23,8 @@ def _load_prompt(filename: str) -> str:
 TAILOR_SYSTEM    = _load_prompt("tailor_system.txt")
 REFINE_SYSTEM    = _load_prompt("refine_system.txt")
 FEW_SHOT_EXAMPLE = _load_prompt("few_shot_example.tex")
+GENERATE_SYSTEM  = _load_prompt("generate_system.txt")
+RESUME_TEMPLATE  = _load_prompt("resume_template.tex")
 
 PRIMARY_MODEL  = "llama-3.3-70b-versatile"
 FALLBACK_MODEL = "deepseek/deepseek-r1-0528-qwen3-8b:free"
@@ -56,6 +58,7 @@ async def call_ai(
     system_prompt: str,
     user_message: str,
     temperature: float = 0.3,
+    max_tokens: int = 2048,
 ) -> str:
     """
     Call Groq (primary) with automatic fallback to OpenRouter.
@@ -74,7 +77,7 @@ async def call_ai(
             model=PRIMARY_MODEL,
             messages=messages,
             temperature=temperature,
-            max_tokens=2048,
+            max_tokens=max_tokens,
         )
         content = response.choices[0].message.content or ""
         return _strip_code_fences(content.strip())
@@ -100,7 +103,7 @@ async def call_ai(
             model=FALLBACK_MODEL,
             messages=messages,
             temperature=temperature,
-            max_tokens=2048,
+            max_tokens=max_tokens,
         )
         content = response.choices[0].message.content or ""
         return _strip_code_fences(content.strip())
@@ -205,3 +208,58 @@ PDFLATEX ERROR:
 Output the corrected section body only."""
 
     return await call_ai(system, user_message, temperature=0.1)
+
+
+# ── Resume-from-scratch generation ───────────────────────────────────────────
+
+async def generate_resume(resume_name: str, career_info: dict[str, Any]) -> str:
+    """
+    Generate a complete, compilable LaTeX resume from structured career info.
+    Returns the full LaTeX document (preamble + sections + \\end{document}).
+    """
+    # Drop empty values so the model isn't distracted by blank fields
+    info_str = json.dumps(_prune_empty(career_info), indent=2)
+
+    user_message = f"""--- LATEX TEMPLATE (use this exact preamble and these macros) ---
+{RESUME_TEMPLATE}
+--- END TEMPLATE ---
+
+CANDIDATE CAREER INFO (JSON):
+{info_str}
+
+Produce one complete LaTeX document for "{resume_name}" using the template's preamble
+and macros. Fill the header with the contact info and build Education, Technical Skills,
+Experience, and Projects sections from the data. Output the full document only."""
+
+    return await call_ai(GENERATE_SYSTEM, user_message, temperature=0.3, max_tokens=4096)
+
+
+async def fix_document_error(broken_latex: str, error_message: str) -> str:
+    """
+    Ask the AI to fix a full LaTeX document so it compiles with pdflatex.
+    Used as a one-shot retry for generated resumes.
+    """
+    system = (
+        "You are a LaTeX syntax expert. Fix the provided full LaTeX document so it compiles "
+        "with pdflatex. Output ONLY the corrected complete document — no explanation, no code fences."
+    )
+    user_message = f"""BROKEN LATEX DOCUMENT:
+{broken_latex}
+
+PDFLATEX ERROR:
+{error_message}
+
+Output the corrected complete document only."""
+
+    return await call_ai(system, user_message, temperature=0.1, max_tokens=4096)
+
+
+def _prune_empty(value: Any) -> Any:
+    """Recursively drop None / empty-string / empty-list values for a cleaner prompt."""
+    if isinstance(value, dict):
+        cleaned = {k: _prune_empty(v) for k, v in value.items()}
+        return {k: v for k, v in cleaned.items() if v not in (None, "", [], {})}
+    if isinstance(value, list):
+        items = [_prune_empty(v) for v in value]
+        return [v for v in items if v not in (None, "", [], {})]
+    return value
