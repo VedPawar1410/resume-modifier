@@ -8,7 +8,7 @@ interface Props {
 
 const modes: { id: AppMode; label: string; icon: string }[] = [
   { id: "tailor", label: "Tailor to Job", icon: "✦" },
-  { id: "refine", label: "Update Content", icon: "✎" },
+  { id: "refine", label: "Update Base", icon: "✎" },
 ];
 
 export function ModeSelector({ mode, onChange }: Props) {

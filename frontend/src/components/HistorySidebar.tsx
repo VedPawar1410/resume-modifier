@@ -23,6 +23,8 @@ export function HistorySidebar({ isOpen, onToggle, onRestore, version }: Props) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [restoringId, setRestoringId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [draftLabel, setDraftLabel] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -48,6 +50,29 @@ export function HistorySidebar({ isOpen, onToggle, onRestore, version }: Props) 
       setRecords((prev) => prev.filter((r) => r.id !== id));
     } catch {
       // silently ignore
+    }
+  };
+
+  const startRename = (e: React.MouseEvent, record: HistoryRecord) => {
+    e.stopPropagation();
+    setEditingId(record.id);
+    setDraftLabel(record.label);
+  };
+
+  const cancelRename = () => {
+    setEditingId(null);
+    setDraftLabel("");
+  };
+
+  const saveRename = async (id: number) => {
+    const label = draftLabel.trim();
+    if (!label) return; // keep editing on empty
+    try {
+      const updated = await resumeApi.renameHistory(id, label);
+      setRecords((prev) => prev.map((r) => (r.id === id ? { ...r, label: updated.label } : r)));
+      cancelRename();
+    } catch {
+      setError("Could not rename this resume.");
     }
   };
 
@@ -115,15 +140,31 @@ export function HistorySidebar({ isOpen, onToggle, onRestore, version }: Props) 
           <ul className="history-list">
             {records.map((record) => (
               <li key={record.id} className="history-card">
+                {editingId === record.id ? (
+                  <input
+                    className="history-card__rename-input"
+                    value={draftLabel}
+                    autoFocus
+                    onChange={(e) => setDraftLabel(e.target.value)}
+                    onBlur={() => saveRename(record.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") saveRename(record.id);
+                      else if (e.key === "Escape") cancelRename();
+                    }}
+                    aria-label="Resume name"
+                  />
+                ) : null}
                 <button
                   className="history-card__restore-btn"
                   onClick={() => handleRestore(record.id)}
                   disabled={restoringId === record.id}
                   aria-label={`Restore: ${record.label}`}
                 >
-                  <div className="history-card__label">
-                    {restoringId === record.id ? "Loading…" : record.label}
-                  </div>
+                  {editingId !== record.id && (
+                    <div className="history-card__label">
+                      {restoringId === record.id ? "Loading…" : record.label}
+                    </div>
+                  )}
                   <div className="history-card__meta">
                     <span>{formatDate(record.created_at)}</span>
                     {record.sections_modified.length > 0 && (
@@ -140,6 +181,14 @@ export function HistorySidebar({ isOpen, onToggle, onRestore, version }: Props) 
                 </button>
 
                 <div className="history-card__actions">
+                  <button
+                    className="btn-ghost history-card__rename-btn"
+                    onClick={(e) => startRename(e, record)}
+                    title="Rename"
+                    aria-label="Rename this resume"
+                  >
+                    ✎
+                  </button>
                   <a
                     href={resumeApi.getHistoryPdfUrl(record.id)}
                     target="_blank"

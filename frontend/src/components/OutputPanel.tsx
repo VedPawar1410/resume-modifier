@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import type { ModifyResponse, RecompileStatus } from "../types";
+import { LatexEditor } from "./LatexEditor";
 
 interface Props {
   result: ModifyResponse | null;
@@ -117,13 +118,7 @@ export function OutputPanel({ result, pdfUrl, onDownloadPdf, recompile, recompil
               {copied ? "✓ Copied" : "Copy"}
             </button>
           </div>
-          <textarea
-            className="latex-edit-textarea"
-            value={editableLatex}
-            onChange={(e) => handleLatexChange(e.target.value)}
-            spellCheck={false}
-            aria-label="Modified LaTeX code — editable"
-          />
+          <LatexEditor value={editableLatex} onChange={handleLatexChange} />
         </div>
       )}
     </motion.div>
