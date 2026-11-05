@@ -31,6 +31,15 @@ class RenameHistoryRequest(BaseModel):
         return v[:128]  # column is String(128)
 
 
+class SaveLatexRequest(BaseModel):
+    latex_code: str
+
+
+class SaveLatexResponse(BaseModel):
+    pdf_base64: Optional[str] = None  # None when the edit doesn't compile (code is still saved)
+    compilation_errors: Optional[str] = None
+
+
 # ── Knowledge-base generation ────────────────────────────────────────────────
 
 class KBStatus(BaseModel):
@@ -54,6 +63,8 @@ class KBGenerateRequest(BaseModel):
 
 class KBGenerateResponse(BaseModel):
     success: bool
+    record_id: Optional[int] = None  # history entry the result was saved as
+    title: Optional[str] = None  # "Company — Role", also used as the history label
     modified_latex: Optional[str] = None
     pdf_base64: Optional[str] = None  # Base64-encoded PDF bytes
     compilation_errors: Optional[str] = None  # Set if pdflatex failed after the fix pass

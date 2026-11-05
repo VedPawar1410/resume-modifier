@@ -1,29 +1,33 @@
 import axios from "axios";
 import type {
   CompileResponse,
+  GenerateResponse,
   HistoryListResponse,
   HistoryRecord,
   KBStatus,
-  ResumeResult,
+  SaveLatexResponse,
 } from "../types";
 
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000",
+  baseURL: BASE_URL,
   timeout: 180_000, // 3 min — AI + LaTeX compilation (+ up to two repair passes) can be slow
 });
 
-// Separate short-timeout client for the fast compile endpoint (no AI involved)
+// Separate short-timeout client for compile/save calls (pdflatex only, no AI)
 const compileApi = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000",
-  timeout: 60_000, // 60s — pure pdflatex, no AI
+  baseURL: BASE_URL,
+  timeout: 60_000,
 });
 
 export const resumeApi = {
   kbStatus: (): Promise<KBStatus> =>
     api.get<KBStatus>("/api/kb").then((r) => r.data),
 
-  generateFromKb: (job_description: string): Promise<ResumeResult> =>
-    api.post<ResumeResult>("/api/generate-from-kb", { job_description }).then((r) => r.data),
+  // Aborting `signal` drops the connection; the backend notices and stops the AI call.
+  generateFromKb: (job_description: string, signal?: AbortSignal): Promise<GenerateResponse> =>
+    api.post<GenerateResponse>("/api/generate-from-kb", { job_description }, { signal }).then((r) => r.data),
 
   compile: (latex_code: string): Promise<CompileResponse> =>
     compileApi.post<CompileResponse>("/api/compile", { latex_code }).then((r) => r.data),
@@ -37,12 +41,16 @@ export const resumeApi = {
   getHistoryLatex: (id: number): Promise<{ modified_latex: string }> =>
     api.get<{ modified_latex: string }>(`/api/history/${id}/latex`).then((r) => r.data),
 
+  getHistoryPdf: (id: number): Promise<Blob> =>
+    api.get(`/api/history/${id}/pdf`, { responseType: "blob" }).then((r) => r.data),
+
+  // Saves the edited LaTeX and recompiles it in one call (editor autosave + live preview).
+  saveLatex: (id: number, latex_code: string): Promise<SaveLatexResponse> =>
+    compileApi.put<SaveLatexResponse>(`/api/history/${id}/latex`, { latex_code }).then((r) => r.data),
+
   deleteHistory: (id: number): Promise<void> =>
     api.delete(`/api/history/${id}`).then(() => undefined),
 
   renameHistory: (id: number, label: string): Promise<HistoryRecord> =>
     api.patch<HistoryRecord>(`/api/history/${id}`, { label }).then((r) => r.data),
-
-  getHistoryPdfUrl: (id: number): string =>
-    `${import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000"}/api/history/${id}/pdf`,
 };

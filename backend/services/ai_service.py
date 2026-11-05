@@ -93,17 +93,33 @@ async def call_ai(
         client = AsyncOpenAI(api_key=p.api_key, base_url=p.base_url, default_headers=p.headers)
         extra = {"temperature": temperature} if p.accepts_temperature else {}
         try:
-            response = await client.chat.completions.create(
+            # Streamed so a cancel can stop generation: if the user cancels, this coroutine is
+            # cancelled, the `async with` closes the connection, and the provider stops writing
+            # (output tokens after that point aren't billed).
+            stream = await client.chat.completions.create(
                 model=p.model,
                 messages=messages,
                 max_tokens=p.max_tokens,
+                stream=True,
                 **extra,
             )
-            choice = response.choices[0]
-            if choice.finish_reason == "length":
+            parts: list[str] = []
+            finish_reason = None
+            async with stream:
+                async for chunk in stream:
+                    if not chunk.choices:
+                        continue
+                    choice = chunk.choices[0]
+                    if choice.delta and choice.delta.content:
+                        parts.append(choice.delta.content)
+                    if choice.finish_reason:
+                        finish_reason = choice.finish_reason
+            if finish_reason == "length":
                 # A cut-off resume is broken LaTeX — treat it as a failure, not a result.
                 raise AIServiceError(f"output cut off at max_tokens={p.max_tokens}")
-            return _strip_code_fences((choice.message.content or "").strip()), p.model
+            return _strip_code_fences("".join(parts).strip()), p.model
+        # Catches provider errors only. A cancel raises CancelledError, which is not an
+        # Exception, so it skips this and doesn't fall through to the next provider.
         except Exception as e:
             logger.warning(f"{p.name} failed: {_describe_error(e)}")
             errors.append(f"{p.name}: {_describe_error(e)}")

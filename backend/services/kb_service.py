@@ -8,6 +8,7 @@ from utils.config import get_settings
 
 ENTRY_ID = re.compile(r"^### \[([a-z]+)-[a-z0-9-]+\]", re.MULTILINE)
 KB_IDS_LINE = re.compile(r"^%\s*kb-ids:\s*(.*)$", re.MULTILINE)
+TITLE_LINE = re.compile(r"^%\s*title:\s*(.+)$", re.MULTILINE)
 HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 PAGES_COUNT = re.compile(rb"/Type\s*/Pages\b.*?/Count\s+(\d+)", re.DOTALL)
 
@@ -62,6 +63,12 @@ def extract_kb_ids(latex: str) -> list[str]:
     if not match:
         return []
     return [i.strip() for i in match.group(1).split(",") if i.strip()]
+
+
+def extract_title(latex: str) -> Optional[str]:
+    """'Company — Role' from the '% title: ...' line the model writes at the top."""
+    match = TITLE_LINE.search(latex)
+    return match.group(1).strip()[:120] if match else None
 
 
 def lost_content(before: str, after: str) -> bool:

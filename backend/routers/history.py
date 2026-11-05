@@ -1,3 +1,4 @@
+import base64
 import json
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -7,7 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
 from models.resume_record import ResumeRecord
-from models.schemas import HistoryListResponse, HistoryRecord, RenameHistoryRequest
+from models.schemas import (
+    HistoryListResponse,
+    HistoryRecord,
+    RenameHistoryRequest,
+    SaveLatexRequest,
+    SaveLatexResponse,
+)
+from services.latex_service import compile_latex
 
 router = APIRouter(prefix="/api/history", tags=["history"])
 
@@ -97,6 +105,33 @@ async def rename_history_record(
     await db.commit()
     await db.refresh(record)
     return _to_schema(record)
+
+
+@router.put("/{record_id}/latex", response_model=SaveLatexResponse)
+async def save_history_latex(
+    record_id: int,
+    req: SaveLatexRequest,
+    db: AsyncSession = Depends(get_db),
+) -> SaveLatexResponse:
+    """
+    Save edited LaTeX and recompile it — one call serves both the editor's live preview
+    and its autosave. The code is always saved; the stored PDF is only replaced when the
+    edit compiles, so a typo never wipes out the last good PDF.
+    """
+    record = await db.get(ResumeRecord, record_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Record not found")
+
+    pdf_bytes, error = compile_latex(req.latex_code)
+    record.modified_latex = req.latex_code
+    if pdf_bytes is not None:
+        record.pdf_bytes = pdf_bytes
+    await db.commit()
+
+    return SaveLatexResponse(
+        pdf_base64=base64.b64encode(pdf_bytes).decode("utf-8") if pdf_bytes else None,
+        compilation_errors=error,
+    )
 
 
 @router.delete("/{record_id}", status_code=204)

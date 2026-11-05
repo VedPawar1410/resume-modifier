@@ -3,47 +3,48 @@ import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { createTheme } from "@uiw/codemirror-themes";
 import { StreamLanguage } from "@codemirror/language";
 import { stex } from "@codemirror/legacy-modes/mode/stex";
-import { Decoration, ViewPlugin, type DecorationSet, type EditorView, type ViewUpdate } from "@codemirror/view";
+import { Decoration, EditorView, ViewPlugin, type DecorationSet, type ViewUpdate } from "@codemirror/view";
 import { RangeSetBuilder } from "@codemirror/state";
 import { tags as t } from "@lezer/highlight";
 
 interface Props {
   value: string;
   onChange: (value: string) => void;
+  wrap: boolean; // soft-wrap long lines instead of scrolling sideways
 }
 
-// Matches the backend SECTION_PATTERN shape (latex_service.py): \section{Name},
-// optionally starred. Used both for the chip bar and the line decoration.
+// \section{Name}, optionally starred. Used for the jump chips and the line decoration.
 const SECTION_RE = /\\section\*?\{([^}]+)\}/g;
 const SECTION_LINE_RE = /^\s*\\section\*?\{/;
 
-// ── Dark theme matching the app's IDE panel (index.css color vars) ───────────
+// ── Light theme matching the app's paper palette (index.css color vars) ──────
 const latexTheme = createTheme({
-  theme: "dark",
+  theme: "light",
   settings: {
-    background: "#1C1F22", // --surface-2
-    foreground: "#E6E7E9", // --text
-    caret: "#C6F24E", // --accent
-    selection: "rgba(198,242,78,0.22)", // --accent-glow
-    selectionMatch: "rgba(198,242,78,0.14)",
-    lineHighlight: "rgba(255,255,255,0.03)",
-    gutterBackground: "#1C1F22",
-    gutterForeground: "#5A5F66", // --text-faint
+    background: "#FFFFFF",
+    foreground: "#1A1916", // --ink
+    caret: "#2B4ACB", // --accent
+    selection: "rgba(43,74,203,0.14)",
+    selectionMatch: "rgba(43,74,203,0.08)",
+    lineHighlight: "rgba(26,25,22,0.025)",
+    gutterBackground: "#FBFAF7",
+    gutterForeground: "#A39E93",
     gutterBorder: "transparent",
+    fontFamily: "'Geist Mono', ui-monospace, monospace",
   },
   styles: [
-    { tag: [t.keyword, t.tagName], color: "#C6F24E" }, // LaTeX commands (\section, \textbf)
-    { tag: [t.brace, t.bracket, t.punctuation], color: "#8A8F98" }, // braces / args delimiters
-    { tag: [t.string, t.literal], color: "#7FD1C0" },
-    { tag: [t.comment], color: "#5A5F66", fontStyle: "italic" }, // % comments
-    { tag: [t.number, t.atom], color: "#FBBF24" },
-    { tag: [t.variableName, t.attributeName], color: "#E6E7E9" },
+    { tag: [t.keyword, t.tagName], color: "#2B4ACB" }, // LaTeX commands (\section, \textbf)
+    { tag: [t.brace, t.bracket, t.punctuation], color: "#8A857B" },
+    { tag: [t.string, t.literal], color: "#1E7B4F" },
+    { tag: [t.comment], color: "#9A958A", fontStyle: "italic" }, // % comments
+    { tag: [t.number, t.atom], color: "#B45309" },
+    { tag: [t.variableName, t.attributeName], color: "#1A1916" },
   ],
 });
 
 const latexLang = StreamLanguage.define(stex);
 
-// ── Decoration: give every \section{} line a bold, accent-banded treatment ───
+// ── Decoration: give every \section{} line a subtle banded treatment ─────────
 const sectionLineDeco = Decoration.line({ class: "cm-section-line" });
 
 function buildSectionDecorations(view: EditorView): DecorationSet {
@@ -75,9 +76,10 @@ const sectionHighlight = ViewPlugin.fromClass(
   { decorations: (v) => v.decorations },
 );
 
-const extensions = [latexLang, sectionHighlight];
+const baseExtensions = [latexLang, sectionHighlight];
+const wrappedExtensions = [...baseExtensions, EditorView.lineWrapping];
 
-export function LatexEditor({ value, onChange }: Props) {
+export function LatexEditor({ value, onChange, wrap }: Props) {
   const cmRef = useRef<ReactCodeMirrorRef>(null);
 
   // Section names + their character offsets, for the jump chips.
@@ -99,15 +101,9 @@ export function LatexEditor({ value, onChange }: Props) {
   return (
     <div className="latex-editor">
       {sections.length > 0 && (
-        <div className="latex-section-chips" role="navigation" aria-label="Jump to section">
-          <span className="latex-section-chips__label">Jump to</span>
+        <div className="latex-chips" role="navigation" aria-label="Jump to section">
           {sections.map((s, i) => (
-            <button
-              key={`${s.name}-${i}`}
-              type="button"
-              className="latex-section-chip"
-              onClick={() => jumpTo(s.offset)}
-            >
+            <button key={`${s.name}-${i}`} type="button" className="latex-chip" onClick={() => jumpTo(s.offset)}>
               {s.name}
             </button>
           ))}
@@ -115,12 +111,12 @@ export function LatexEditor({ value, onChange }: Props) {
       )}
       <CodeMirror
         ref={cmRef}
+        className="latex-editor__cm"
         value={value}
         onChange={onChange}
         theme={latexTheme}
-        extensions={extensions}
-        minHeight="250px"
-        maxHeight="500px"
+        extensions={wrap ? wrappedExtensions : baseExtensions}
+        height="100%"
         spellCheck={false}
         basicSetup={{
           lineNumbers: true,

@@ -1,132 +1,134 @@
+import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { resumeApi } from "./api/resumeApi";
-import { HistorySidebar } from "./components/HistorySidebar";
-import { JobDescriptionInput } from "./components/JobDescriptionInput";
-import { KbPanel } from "./components/KbPanel";
-import { OutputPanel } from "./components/OutputPanel";
-import { StatusBanner } from "./components/StatusBanner";
-import { useGenerateResume } from "./hooks/useGenerateResume";
-import type { KBStatus } from "./types";
+import { ComposeView } from "./components/ComposeView";
+import { SidebarIcon } from "./components/Icons";
+import { ResultView } from "./components/ResultView";
+import { Sidebar } from "./components/Sidebar";
+import { useResume } from "./hooks/useResume";
+import type { HistoryRecord, KBStatus } from "./types";
 import "./index.css";
 
+const PAGE = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -4 },
+  transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] as const },
+};
+
 export default function App() {
+  const ws = useResume();
   const [jobDescription, setJobDescription] = useState("");
   const [kb, setKb] = useState<KBStatus | null>(null);
-
-  const [pdflatexAvailable, setPdflatexAvailable] = useState<boolean | null>(null);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [pdflatexOk, setPdflatexOk] = useState<boolean | null>(null);
   const [historyVersion, setHistoryVersion] = useState(0);
-
-  const { generate, showLatex, result, status, error, pdfUrl, downloadPdf, recompile, recompileStatus } =
-    useGenerateResume();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [editorOpen, setEditorOpen] = useState(false);
 
   const loadKb = () => {
     resumeApi
       .kbStatus()
       .then(setKb)
-      .catch(() => setKb(null));
+      .catch(() => setKb({ path: "(backend unreachable)", found: false, entry_count: 0, entries_by_section: {} }));
   };
 
-  // ── Load health + knowledge-base status on mount ───────────────────────────
   useEffect(() => {
     resumeApi
       .health()
-      .then((h) => setPdflatexAvailable(h.pdflatex_available))
-      .catch(() => setPdflatexAvailable(false));
+      .then((h) => setPdflatexOk(h.pdflatex_available))
+      .catch(() => setPdflatexOk(false));
     loadKb();
   }, []);
 
-  const handleGenerate = async () => {
-    if (!jobDescription.trim()) {
-      alert("Please paste a job description.");
-      return;
-    }
-    await generate(jobDescription);
-    setHistoryVersion((v) => v + 1);
+  // The split editor wants the full width, so opening it tucks the sidebar away.
+  const changeEditorOpen = (open: boolean) => {
+    setEditorOpen(open);
+    setSidebarOpen(!open);
   };
 
+  const handleGenerate = async () => {
+    const ok = await ws.generate(jobDescription);
+    setHistoryVersion((v) => v + 1);
+    if (ok) setJobDescription("");
+  };
+
+  const handleNew = () => {
+    changeEditorOpen(false);
+    ws.newResume();
+  };
+
+  const handleOpen = (record: HistoryRecord) => {
+    changeEditorOpen(false);
+    ws.open(record);
+  };
+
+  const handleDeleted = (id: number) => {
+    if (ws.current?.recordId === id) handleNew();
+  };
+
+  const handleRenamed = (id: number, label: string) => {
+    if (ws.current?.recordId === id) ws.rename(label);
+  };
+
+  const showResult = ws.phase === "result" && ws.current;
+
   return (
-    <div className="app">
-      <header className="app-header">
-        <div className="app-header__lights" aria-hidden="true">
-          <span /><span /><span />
-        </div>
-        <div className="app-header__text">
-          <h1>resume.<b>modifier</b></h1>
-          <p className="subtitle">Job-tailored LaTeX résumés from your knowledge base</p>
-        </div>
-        {pdflatexAvailable !== null && (
-          <span className={`status-pill ${pdflatexAvailable ? "status-pill--ok" : "status-pill--off"}`}>
-            <span className="status-pill__dot" />
-            {pdflatexAvailable ? "pdflatex ready" : "pdflatex offline"}
-          </span>
+    <div className={`shell ${sidebarOpen ? "" : "shell--collapsed"}`}>
+      <Sidebar
+        activeId={ws.current?.recordId ?? null}
+        version={historyVersion}
+        pdflatexOk={pdflatexOk}
+        onNew={handleNew}
+        onOpen={handleOpen}
+        onDeleted={handleDeleted}
+        onRenamed={handleRenamed}
+        onCollapse={() => setSidebarOpen(false)}
+      />
+
+      <main className="workspace">
+        {!sidebarOpen && !showResult && (
+          <button className="icon-btn workspace__toggle" onClick={() => setSidebarOpen(true)} aria-label="Show sidebar">
+            <SidebarIcon />
+          </button>
         )}
-      </header>
 
-      {pdflatexAvailable === false && (
-        <div className="header-warning">
-          ⚠️ <strong>pdflatex not found</strong> — PDF download won't work. Generated LaTeX will still be returned.
-          Install TeX Live: <code>brew install --cask mactex-no-gui</code>
-        </div>
-      )}
-
-      <div className="app-body">
-        <HistorySidebar
-          isOpen={historyOpen}
-          onToggle={() => setHistoryOpen((o) => !o)}
-          onRestore={(latex) => { showLatex(latex); setHistoryOpen(false); }}
-          version={historyVersion}
-        />
-
-        <div className="app-content">
-          <main className="app-main">
-            <div className="panel-card">
-              <section className="input-panel">
-                <KbPanel status={kb} onRefresh={loadKb} />
-
-                <JobDescriptionInput value={jobDescription} onChange={setJobDescription} />
-
-                <StatusBanner status={status} error={error} />
-
-                <button
-                  className="btn-primary btn-submit"
-                  onClick={handleGenerate}
-                  disabled={status === "loading" || !kb?.found}
-                >
-                  {status === "loading" ? (
-                    <><span className="spinner" />Writing your résumé…</>
-                  ) : (
-                    "Generate Résumé"
-                  )}
-                </button>
-              </section>
-            </div>
-
-            <div className="panel-card">
-              <section className="output-column">
-                {result ? (
-                  <OutputPanel
-                    result={result}
-                    pdfUrl={pdfUrl}
-                    onDownloadPdf={downloadPdf}
-                    recompile={recompile}
-                    recompileStatus={recompileStatus}
-                  />
-                ) : (
-                  <div className="output-placeholder">
-                    <div className="placeholder-icon">📋</div>
-                    <p className="placeholder-title">Your résumé will appear here</p>
-                    <p style={{ fontSize: "0.875rem", color: "var(--text-muted)" }}>
-                      Paste a job description and click Generate Résumé. The AI picks the most relevant
-                      entries from your knowledge base and writes a one-page résumé.
-                    </p>
-                  </div>
-                )}
-              </section>
-            </div>
-          </main>
-        </div>
-      </div>
+        <AnimatePresence mode="wait">
+          {showResult ? (
+            <motion.div key={`result-${ws.current!.recordId}`} className="page" {...PAGE}>
+              <ResultView
+                key={ws.current!.recordId ?? "unsaved"}
+                resume={ws.current!}
+                editorOpen={editorOpen}
+                onEditorOpenChange={changeEditorOpen}
+                saveState={ws.saveState}
+                saveError={ws.saveError}
+                onSave={ws.save}
+                onEdit={ws.markUnsaved}
+                onNew={handleNew}
+                sidebarOpen={sidebarOpen}
+                onShowSidebar={() => setSidebarOpen(true)}
+              />
+            </motion.div>
+          ) : ws.phase === "opening" ? (
+            <motion.div key="opening" className="page page--center" {...PAGE}>
+              <span className="spinner-dot" /> <span className="muted">Opening résumé…</span>
+            </motion.div>
+          ) : (
+            <motion.div key="compose" className="page" {...PAGE}>
+              <ComposeView
+                kb={kb}
+                onRefreshKb={loadKb}
+                jobDescription={jobDescription}
+                onJobDescriptionChange={setJobDescription}
+                generating={ws.phase === "generating"}
+                error={ws.error}
+                onGenerate={handleGenerate}
+                onCancel={ws.cancel}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
     </div>
   );
 }

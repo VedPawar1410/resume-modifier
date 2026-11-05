@@ -1,10 +1,12 @@
 """Generate a resume for a job description from the knowledge base (kb.md)."""
 
+import asyncio
 import base64
+import contextlib
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
@@ -20,6 +22,7 @@ from services.kb_service import (
     KBNotFoundError,
     count_pdf_pages,
     extract_kb_ids,
+    extract_title,
     kb_status,
     load_kb,
     lost_content,
@@ -36,11 +39,37 @@ async def get_kb_status() -> KBStatus:
     return KBStatus(**kb_status())
 
 
+DISCONNECT_POLL_SECONDS = 0.5
+
+
 @router.post("/api/generate-from-kb", response_model=KBGenerateResponse)
 async def generate_resume_from_kb(
-    request: KBGenerateRequest,
+    body: KBGenerateRequest,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
-) -> KBGenerateResponse:
+):
+    """
+    Runs the pipeline as a task and watches the connection. If the user cancels (the browser
+    drops the request), the task is cancelled: the in-flight AI stream closes, no repair
+    passes run and nothing is saved to history.
+
+    FastAPI doesn't do this by itself — without it, a cancelled request keeps running (and
+    spending tokens) on the server until it finishes.
+    """
+    task = asyncio.create_task(_run_pipeline(body, db))
+    while True:
+        done, _ = await asyncio.wait({task}, timeout=DISCONNECT_POLL_SECONDS)
+        if done:
+            return task.result()
+        if await http_request.is_disconnected():
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+            logger.info("Client cancelled generation — stopped the pipeline")
+            return Response(status_code=499)  # nginx's "client closed request"; nobody reads it
+
+
+async def _run_pipeline(request: KBGenerateRequest, db: AsyncSession) -> KBGenerateResponse:
     """
     KB + job description → AI-written LaTeX → PDF.
     Two automatic repair passes: one AI fix if it doesn't compile, one AI trim if it
@@ -97,8 +126,32 @@ async def generate_resume_from_kb(
             f"Error: {error}"
         )
 
-    response = KBGenerateResponse(
+    # ── Persist to history (the kb-ids line inside the LaTeX records the sources) ──
+    # Label = the AI's "Company — Role" title, else the JD's first line.
+    jd_first_line = next((line.strip() for line in request.job_description.splitlines() if line.strip()), "")
+    title = extract_title(latex) or jd_first_line[:80] or "Résumé"
+    record_id = None
+    try:
+        record = ResumeRecord(
+            created_at=datetime.now(timezone.utc),
+            mode="kb",
+            label=title[:128],
+            job_description_preview=request.job_description[:100],
+            sections_modified="[]",
+            modified_latex=latex,
+            pdf_bytes=pdf_bytes,
+        )
+        db.add(record)
+        await db.flush()  # assigns the id before commit expires the object
+        record_id = record.id
+        await db.commit()
+    except Exception:
+        logger.exception("Persist failed — continuing without saving")
+
+    return KBGenerateResponse(
         success=True,
+        record_id=record_id,
+        title=title,
         modified_latex=latex,
         pdf_base64=base64.b64encode(pdf_bytes).decode("utf-8") if pdf_bytes else None,
         compilation_errors=compilation_errors,
@@ -107,22 +160,3 @@ async def generate_resume_from_kb(
         model=model,
         retry_count=retry_count,
     )
-
-    # ── Persist to history (the kb-ids line inside the LaTeX records the sources) ──
-    try:
-        now = datetime.now(timezone.utc)
-        jd_title = next((line.strip() for line in request.job_description.splitlines() if line.strip()), "")
-        db.add(ResumeRecord(
-            created_at=now,
-            mode="kb",
-            label=f"{jd_title[:60] or 'Resume'} · {now.strftime('%b %-d %Y')}",
-            job_description_preview=request.job_description[:100],
-            sections_modified="[]",
-            modified_latex=latex,
-            pdf_bytes=pdf_bytes,
-        ))
-        await db.commit()
-    except Exception:
-        logger.exception("Persist failed — continuing without saving")
-
-    return response

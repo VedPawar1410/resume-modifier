@@ -74,13 +74,23 @@ so it decompresses streams with zlib to read `/Count`.
 - `GET /api/kb` — KB status (found, entry counts by section, last_updated)
 - `POST /api/generate-from-kb` — the main pipeline above
 - `POST /api/compile` — recompile raw LaTeX to PDF with no AI (used by live-edit in frontend)
-- `/api/history…` — list / get LaTeX or PDF / rename / delete saved resumes (`mode="kb"`)
+- `/api/history…` — list / get LaTeX or PDF / rename / delete saved resumes (`mode="kb"`);
+  `PUT /api/history/{id}/latex` saves edited LaTeX and recompiles (editor autosave)
 
 ### Frontend state flow
 
-`App.tsx` owns the JD input and KB status. `useGenerateResume` (hook) owns async status and the
-result. `KbPanel` shows KB status; `OutputPanel` renders the stats (KB entries used, pages, model),
-the live-edit LaTeX editor and inline PDF preview. Recompile hits `POST /api/compile` directly.
+Two-step flow: `ComposeView` (KB status + JD input + staged loader) → `ResultView` (title, chips,
+toolbar, PDF "sheet", optional split LaTeX editor). `Sidebar` lists history grouped by day with
+rename/delete. `useResume` (hook) owns the phase (`compose | generating | opening | result`), the open
+résumé and saving. `App.tsx` keys `ResultView` by record id so editor state resets per résumé.
+
+Editor edits are debounced and sent to `PUT /api/history/{id}/latex`, which saves the LaTeX **and**
+recompiles in one call (autosave + live preview). The stored PDF is only replaced when the edit
+compiles. The PDF embed uses `#view=Fit` so reloads never lose scroll position.
+
+The model's line-2 `% title: Company — Role` comment becomes the history label.
+
+Plans, ideas and the user's to-dos live in `ROADMAP.md`; feature ideas in depth in `docs/ideas/`.
 
 PDF is returned as base64 from the API; the frontend converts it to a blob URL via `URL.createObjectURL` and revokes the previous one on each new result.
 

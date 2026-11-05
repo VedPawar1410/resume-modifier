@@ -13,6 +13,9 @@ INPUTS
 OUTPUT
 - Line 1 must be a LaTeX comment listing the IDs of every knowledge-base entry you used:
   % kb-ids: exp-example, proj-example, cert-example
+- Line 2 must be a LaTeX comment naming the job, taken from the job description:
+  % title: Company — Role        (e.g. "% title: Rippling — Software Engineer 1";
+  if the company isn't stated, write just the role)
 - Then ONE complete LaTeX document: the template preamble copied verbatim, then
   \begin{document} ... \end{document} following the template's body layout and spacing.
 - Raw LaTeX only. No markdown, no code fences, no explanation.
