@@ -1,20 +1,15 @@
 import axios from "axios";
 import type {
-  BaseResumeDetail,
-  BaseResumeSummary,
   CompileResponse,
-  CreateBaseRequest,
-  GenerateRequest,
-  GenerateResponse,
   HistoryListResponse,
   HistoryRecord,
-  ModifyRequest,
-  ModifyResponse,
+  KBStatus,
+  ResumeResult,
 } from "../types";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000",
-  timeout: 180_000, // 3 min — AI + LaTeX compilation can be slow
+  timeout: 180_000, // 3 min — AI + LaTeX compilation (+ up to two repair passes) can be slow
 });
 
 // Separate short-timeout client for the fast compile endpoint (no AI involved)
@@ -24,8 +19,11 @@ const compileApi = axios.create({
 });
 
 export const resumeApi = {
-  modify: (req: ModifyRequest): Promise<ModifyResponse> =>
-    api.post<ModifyResponse>("/api/modify", req).then((r) => r.data),
+  kbStatus: (): Promise<KBStatus> =>
+    api.get<KBStatus>("/api/kb").then((r) => r.data),
+
+  generateFromKb: (job_description: string): Promise<ResumeResult> =>
+    api.post<ResumeResult>("/api/generate-from-kb", { job_description }).then((r) => r.data),
 
   compile: (latex_code: string): Promise<CompileResponse> =>
     compileApi.post<CompileResponse>("/api/compile", { latex_code }).then((r) => r.data),
@@ -47,27 +45,4 @@ export const resumeApi = {
 
   getHistoryPdfUrl: (id: number): string =>
     `${import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000"}/api/history/${id}/pdf`,
-
-  // ── Base resumes ───────────────────────────────────────────────────────────
-  listBases: (): Promise<BaseResumeSummary[]> =>
-    api.get<BaseResumeSummary[]>("/api/bases").then((r) => r.data),
-
-  getBase: (id: number): Promise<BaseResumeDetail> =>
-    api.get<BaseResumeDetail>(`/api/bases/${id}`).then((r) => r.data),
-
-  createBase: (req: CreateBaseRequest): Promise<BaseResumeDetail> =>
-    api.post<BaseResumeDetail>("/api/bases", req).then((r) => r.data),
-
-  updateBase: (id: number, latex_code: string, name?: string): Promise<BaseResumeDetail> =>
-    api.put<BaseResumeDetail>(`/api/bases/${id}`, { latex_code, name }).then((r) => r.data),
-
-  deleteBase: (id: number): Promise<void> =>
-    api.delete(`/api/bases/${id}`).then(() => undefined),
-
-  getBasePdfUrl: (id: number): string =>
-    `${import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000"}/api/bases/${id}/pdf`,
-
-  // ── Generate from scratch ──────────────────────────────────────────────────
-  generate: (req: GenerateRequest): Promise<GenerateResponse> =>
-    api.post<GenerateResponse>("/api/generate", req).then((r) => r.data),
 };

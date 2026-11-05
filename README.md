@@ -1,20 +1,30 @@
 # Resume Modifier 📄
 
-AI-powered LaTeX resume tailoring and refinement tool.
+Generates a job-tailored, one-page LaTeX résumé from a personal **knowledge base**.
 
-## Modes
+Instead of tailoring one fixed base résumé, you keep everything about your work — every job,
+project (working or not), skill, certification and achievement — in one structured Markdown file
+(`kb.md`). Paste a job description and the AI picks the most relevant entries and writes a
+one-page résumé, using only facts from the knowledge base.
 
-### 🎯 Mode 1 — Tailor to Job Description
-Paste your LaTeX resume + a job description. AI rewrites your bullet points to emphasize relevant keywords, skills, and experience. Choose which sections to tailor.
+## How it works
 
-### ✏️ Mode 2 — Add / Update Content
-Add a new job, project, or skills to your resume. Provide raw notes; AI generates professionally worded bullet points in the correct LaTeX format.
+1. **Knowledge base** — `kb.md` follows a strict format (entries with permanent IDs, results tagged
+   `exact` / `approx` / `estimate`, project status, skill levels with evidence). It lives in a
+   separate private repo, next to this one.
+2. **Generate** — `POST /api/generate-from-kb` sends the KB, the job description and a LaTeX
+   template to Claude, which returns a complete résumé. Line 1 lists the KB entry IDs it used,
+   so every bullet can be traced back to a fact.
+3. **Compile & repair** — pdflatex builds the PDF. If it fails to compile, the AI fixes it once;
+   if it spills past one page, the AI trims it once. A repair that drops content is rejected.
+4. **Edit** — the result opens in a live LaTeX editor with PDF preview, and is saved to history.
 
 ## Tech Stack
-- **Backend**: Python + FastAPI
-- **AI**: Groq API (llama-3.3-70b-versatile) — free tier
+- **Backend**: Python + FastAPI, SQLite (history)
+- **AI**: Claude (`claude-haiku-5-5` by default) via Anthropic's OpenAI-compatible endpoint, with
+  Groq and OpenRouter as optional fallbacks — all through the `openai` SDK
 - **PDF**: Local pdflatex (TeX Live)
-- **Frontend**: React + Vite + TypeScript
+- **Frontend**: React + Vite + TypeScript, CodeMirror
 
 ## Setup
 
@@ -27,6 +37,10 @@ brew install --cask mactex-no-gui
 export PATH="/Library/TeX/texbin:$PATH"
 ```
 
+### Knowledge base
+Clone or create your knowledge-base repo next to this one so that `../resume-knowledge-base/kb.md`
+exists, or set `KB_PATH` in `.env`.
+
 ### Backend
 ```bash
 python3 -m venv backend/venv
@@ -35,7 +49,7 @@ pip install -r backend/requirements.txt
 
 # Copy and fill in your API key
 cp .env.example .env
-# Edit .env: set GROQ_API_KEY=your_key_here
+# Edit .env: set ANTHROPIC_API_KEY
 ```
 
 ### Frontend
@@ -63,14 +77,13 @@ Open **http://localhost:5173**
 
 ## API
 
-- `GET /api/health` — Check server + pdflatex availability
-- `POST /api/modify` — Tailor or refine a resume
+- `GET /api/health` — server + pdflatex availability
+- `GET /api/kb` — knowledge-base status (entry counts, last updated)
+- `POST /api/generate-from-kb` — generate a résumé for a job description
+- `POST /api/compile` — compile LaTeX to PDF (no AI; used by the live editor)
+- `/api/history` — saved résumés
 - Swagger docs at: **http://localhost:8000/docs**
 
-## Getting a Free Groq API Key
-1. Go to https://console.groq.com
-2. Sign up (free)
-3. Create an API key
-4. Add to `.env` as `GROQ_API_KEY=gsk_...`
-
-Free tier: 14,400 requests/day, 6,000 tokens/minute — plenty for personal use.
+## Cost
+About half a US cent per résumé on `claude-haiku-5-5` (~9k input tokens, ~7.5k output tokens
+including the model's thinking).

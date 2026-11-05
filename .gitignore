@@ -23,3 +23,6 @@ backend/resume_history.db
 .DS_Store
 
 changes_to_make.txt
+
+# Local DB backups (contain personal resume data)
+backend/backups/

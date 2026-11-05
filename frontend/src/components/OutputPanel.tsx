@@ -1,10 +1,10 @@
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import type { ModifyResponse, RecompileStatus } from "../types";
+import type { RecompileStatus, ResumeResult } from "../types";
 import { LatexEditor } from "./LatexEditor";
 
 interface Props {
-  result: ModifyResponse | null;
+  result: ResumeResult | null;
   pdfUrl: string | null;
   onDownloadPdf: () => void;
   recompile: (latex: string) => Promise<void>;
@@ -45,7 +45,8 @@ export function OutputPanel({ result, pdfUrl, onDownloadPdf, recompile, recompil
 
   if (!result) return null;
 
-  const sectionCount = result.sections_modified.length;
+  const entryCount = result.kb_ids.length;
+  const overOnePage = !!result.page_count && result.page_count > 1;
 
   return (
     <motion.div
@@ -57,19 +58,29 @@ export function OutputPanel({ result, pdfUrl, onDownloadPdf, recompile, recompil
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
         <h2 className="output-title">
           <span style={{ color: "var(--success)", fontSize: "1.1rem" }}>✓</span>
-          Resume Updated
+          Resume Ready
         </h2>
         <div className="output-stats">
           <span className="stat-chip stat-chip--success">
-            {sectionCount} section{sectionCount !== 1 ? "s" : ""} modified
+            {entryCount} KB entr{entryCount !== 1 ? "ies" : "y"} used
           </span>
+          {result.page_count != null && (
+            <span className={`stat-chip ${overOnePage ? "stat-chip--warning" : "stat-chip--success"}`}>
+              {result.page_count} page{result.page_count !== 1 ? "s" : ""}
+            </span>
+          )}
+          {result.model && <span className="stat-chip">{result.model}</span>}
           {result.retry_count > 0 && (
             <span className="stat-chip stat-chip--warning">
-              ↻ {result.retry_count} retr{result.retry_count > 1 ? "ies" : "y"}
+              ↻ {result.retry_count} repair{result.retry_count > 1 ? "s" : ""}
             </span>
           )}
         </div>
       </div>
+
+      {entryCount > 0 && (
+        <p className="hint">Sources: {result.kb_ids.join(", ")}</p>
+      )}
 
       {result.compilation_errors && (
         <div className="banner banner-warning">

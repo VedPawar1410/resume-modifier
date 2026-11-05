@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import close_db, init_db
-from routers import base_resumes, compile, generate, health, history, modify
+from routers import compile, health, history, kb
 
 logging.basicConfig(
     level=logging.INFO,
@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Resume Modifier API",
-    description="AI-powered resume tailoring and refinement tool",
+    description="Generates job-tailored LaTeX resumes from a personal knowledge base",
     version="0.1.0",
     lifespan=lifespan,
 )
@@ -40,11 +40,9 @@ app.add_middleware(
 )
 
 app.include_router(health.router)
-app.include_router(modify.router)
+app.include_router(kb.router)
 app.include_router(compile.router)
 app.include_router(history.router)
-app.include_router(base_resumes.router)
-app.include_router(generate.router)
 
 
 @app.get("/")
