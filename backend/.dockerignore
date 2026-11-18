@@ -1,0 +1,10 @@
+# The image is published publicly (GHCR) — keep personal data and secrets out of it.
+venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.db
+*.db-journal
+backups/
+.env
+.env.*

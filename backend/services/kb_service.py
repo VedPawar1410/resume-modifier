@@ -1,8 +1,11 @@
 """Read the knowledge base (kb.md) and small helpers around KB-generated resumes."""
 
 import re
+import time
 import zlib
 from typing import Optional
+
+import httpx
 
 from utils.config import get_settings
 
@@ -26,22 +29,64 @@ class KBNotFoundError(Exception):
     pass
 
 
+# Deployed, kb.md is read from the private GitHub repo (it never lives on the server's disk).
+# A short cache keeps the status call and the generate call from fetching twice, while a
+# push to the KB repo still shows up within a minute.
+GITHUB_CACHE_SECONDS = 60
+_github_cache: dict[str, tuple[float, str]] = {}
+
+
+def _kb_source() -> str:
+    s = get_settings()
+    return f"github:{s.kb_github_repo}/kb.md" if s.kb_github_repo else str(s.kb_path)
+
+
+def _read_raw_kb() -> str:
+    """kb.md exactly as stored — from GitHub when KB_GITHUB_REPO is set, else from KB_PATH."""
+    s = get_settings()
+    if not s.kb_github_repo:
+        if not s.kb_path.exists():
+            raise KBNotFoundError(f"Knowledge base not found at {s.kb_path}. Set KB_PATH in .env.")
+        return s.kb_path.read_text(encoding="utf-8")
+
+    cached = _github_cache.get(s.kb_github_repo)
+    if cached and time.monotonic() - cached[0] < GITHUB_CACHE_SECONDS:
+        return cached[1]
+    try:
+        response = httpx.get(
+            f"https://api.github.com/repos/{s.kb_github_repo}/contents/kb.md",
+            headers={
+                "Authorization": f"Bearer {s.github_token}",
+                "Accept": "application/vnd.github.raw+json",  # file contents, not JSON metadata
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+            timeout=10,
+        )
+    except httpx.HTTPError as e:
+        raise KBNotFoundError(f"Couldn't reach GitHub for the knowledge base: {e}") from e
+    if response.status_code != 200:
+        # 404 also means "token can't see the repo" — GitHub hides private repos that way.
+        raise KBNotFoundError(
+            f"GitHub returned {response.status_code} for {s.kb_github_repo}/kb.md — "
+            "check KB_GITHUB_REPO and that GITHUB_TOKEN can read that repo's contents."
+        )
+    _github_cache[s.kb_github_repo] = (time.monotonic(), response.text)
+    return response.text
+
+
 def load_kb() -> str:
     """kb.md as the AI sees it: template guidance comments removed, blank runs collapsed."""
-    path = get_settings().kb_path
-    if not path.exists():
-        raise KBNotFoundError(f"Knowledge base not found at {path}. Set KB_PATH in .env.")
-    text = HTML_COMMENT.sub("", path.read_text(encoding="utf-8"))
+    text = HTML_COMMENT.sub("", _read_raw_kb())
     return re.sub(r"\n{3,}", "\n\n", text).strip()
 
 
 def kb_status() -> dict:
     """Summary for the UI: where the KB is, how many entries of each kind, last update."""
-    path = get_settings().kb_path
-    if not path.exists():
-        return {"path": str(path), "found": False}
+    try:
+        text = load_kb()
+    except KBNotFoundError:
+        return {"path": _kb_source(), "found": False}
 
-    text = load_kb()
     counts = {section: 0 for section in PREFIX_SECTIONS.values()}
     for prefix in ENTRY_ID.findall(text):
         if prefix in PREFIX_SECTIONS:
@@ -49,7 +94,7 @@ def kb_status() -> dict:
     updated = re.search(r"^- last_updated:\s*(\S+)", text, re.MULTILINE)
 
     return {
-        "path": str(path),
+        "path": _kb_source(),
         "found": True,
         "entry_count": sum(counts.values()),
         "entries_by_section": counts,
@@ -68,7 +113,11 @@ def extract_kb_ids(latex: str) -> list[str]:
 def extract_title(latex: str) -> Optional[str]:
     """'Company — Role' from the '% title: ...' line the model writes at the top."""
     match = TITLE_LINE.search(latex)
-    return match.group(1).strip()[:120] if match else None
+    if not match:
+        return None
+    # The model sometimes writes LaTeX dashes ("---") in the comment; show a real em dash.
+    title = match.group(1).strip().replace("---", "—").replace(" -- ", " — ")
+    return title[:120]
 
 
 def lost_content(before: str, after: str) -> bool:

@@ -1,0 +1,88 @@
+name: Deploy
+
+# Continuous delivery for the API — the same setup as EquipTrack. Runs only after CI passes on main.
+#   image  -> build backend/Dockerfile once, push to GitHub Container Registry (tagged with the commit)
+#   deploy -> point the Azure Container App at the new image, then smoke-test /api/health
+# The database needs no migration step: the API creates its tables at start-up. See docs/DEPLOYMENT.md.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:  # manual run from the Actions tab, e.g. after first-time setup
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write  # push to ghcr.io with the workflow's own short-lived token
+    outputs:
+      image: ${{ steps.name.outputs.image }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}  # exactly the commit CI tested
+      - id: name
+        # Registry names must be lowercase.
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/sourced-api" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v7
+        with:
+          context: backend
+          push: true
+          tags: |
+            ${{ steps.name.outputs.image }}:${{ github.event.workflow_run.head_sha || github.sha }}
+            ${{ steps.name.outputs.image }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: image
+    # Skipped (not failed) until Azure is set up: see docs/DEPLOYMENT.md, step 5.
+    if: vars.AZURE_CONTAINERAPP_NAME != ''
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write  # OIDC: GitHub proves its identity to Azure, so no Azure password is stored
+    steps:
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - run: az extension add --name containerapp --upgrade --only-show-errors
+      - name: Roll the Container App onto the new image
+        env:
+          IMAGE: ${{ needs.image.outputs.image }}:${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          az containerapp update \
+            --name "${{ vars.AZURE_CONTAINERAPP_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --image "$IMAGE" --output none
+      - name: Smoke test /api/health
+        # The app scales to zero, so the first request waits for a cold start.
+        run: |
+          fqdn=$(az containerapp show --name "${{ vars.AZURE_CONTAINERAPP_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --query properties.configuration.ingress.fqdn --output tsv)
+          for attempt in $(seq 1 18); do
+            body=$(curl --silent --fail --max-time 20 "https://$fqdn/api/health") && \
+              echo "$body" | grep -q '"pdflatex_available":true' && { echo "$body"; echo "healthy"; exit 0; }
+            echo "attempt $attempt: not healthy yet"; sleep 10
+          done
+          echo "::error::https://$fqdn/api/health did not become healthy"; exit 1

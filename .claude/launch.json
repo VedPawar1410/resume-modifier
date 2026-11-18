@@ -4,7 +4,7 @@
     {
       "name": "backend",
       "runtimeExecutable": "bash",
-      "runtimeArgs": ["-c", "cd backend && export PATH=/Library/TeX/texbin:$PATH && ./venv/bin/uvicorn main:app --reload --host 0.0.0.0 --port 8000"],
+      "runtimeArgs": ["-c", "cd backend && export PATH=/Library/TeX/texbin:$PATH && ./venv/bin/python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000"],
       "port": 8000
     },
     {
@@ -12,6 +12,18 @@
       "runtimeExecutable": "bash",
       "runtimeArgs": ["-c", "cd frontend && npm run dev"],
       "port": 5173
+    },
+    {
+      "name": "backend-deployed-mode",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd backend && export PATH=/Library/TeX/texbin:$PATH && APP_PASSWORD=local-test CORS_ORIGINS=http://localhost:5174 KB_GITHUB_REPO=VedPawar1410/resume-knowledge-base GITHUB_TOKEN=$(gh auth token) ./venv/bin/python -m uvicorn main:app --port 8001"],
+      "port": 8001
+    },
+    {
+      "name": "frontend-deployed-mode",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd frontend && VITE_API_BASE_URL=http://localhost:8001 npm run dev -- --port 5174 --strictPort"],
+      "port": 5174
     }
   ]
 }

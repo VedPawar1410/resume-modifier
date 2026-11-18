@@ -2,6 +2,7 @@
 PDF compilation service: runs pdflatex in a temp directory and returns the PDF bytes.
 """
 
+import os
 import shutil
 import subprocess
 import tempfile
@@ -9,6 +10,30 @@ from pathlib import Path
 from typing import Optional
 
 PDFLATEX_TIMEOUT = 60  # seconds per run
+
+# ── Sandbox ──────────────────────────────────────────────────────────────────
+# The editor sends any LaTeX the user types, and LaTeX can read files by path
+# (\input{/proc/1/environ} would print the server's API keys into the PDF). TeX Live's
+# openin_any=p does NOT stop absolute-path reads in TL 2026 (tested), so isolation is
+# done by the operating system instead:
+#   1. pdflatex gets a minimal environment — no API keys, tokens or database URL.
+#   2. In the container (running as root, Linux), pdflatex runs as `nobody` via setpriv,
+#      so it can't read the API process's environment (/proc/1/environ is root-only).
+#   3. Shell escape is off, and writes stay in the temp folder (openout_any=p).
+# Secrets never live in files the app writes (the KB is fetched into memory).
+NOBODY_UID = 65534
+SANDBOX_ENV = {
+    "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+    "LANG": "C.UTF-8",
+    "openin_any": "p",
+    "openout_any": "p",
+    "shell_escape": "f",
+}
+
+
+def _drop_privileges() -> bool:
+    """True when we can run pdflatex as an unprivileged user (root in a Linux container)."""
+    return hasattr(os, "geteuid") and os.geteuid() == 0 and shutil.which("setpriv") is not None
 
 
 def compile_latex(latex_code: str) -> tuple[Optional[bytes], Optional[str]]:
@@ -32,13 +57,22 @@ def compile_latex(latex_code: str) -> tuple[Optional[bytes], Optional[str]]:
         tex_path = tmpdir / "resume.tex"
         tex_path.write_text(latex_code, encoding="utf-8")
 
+        prefix: list[str] = []
+        if _drop_privileges():
+            # `nobody` must be able to write its output into the temp folder.
+            os.chown(tmpdir, NOBODY_UID, NOBODY_UID)
+            os.chown(tex_path, NOBODY_UID, NOBODY_UID)
+            prefix = ["setpriv", f"--reuid={NOBODY_UID}", f"--regid={NOBODY_UID}",
+                      "--clear-groups", "--no-new-privs"]
+
         cmd = [
+            *prefix,
             "pdflatex",
             "-interaction=nonstopmode",
             # Note: no -halt-on-error — pdflatex recovers from many warnings/errors
             # and still produces a valid PDF. We check returncode + pdf existence.
-            f"-output-directory={tmpdir}",
-            str(tex_path),
+            "-no-shell-escape",  # \write18 can't run shell commands
+            tex_path.name,  # relative: paranoid mode below rejects absolute paths
         ]
 
         last_result: Optional[subprocess.CompletedProcess[str]] = None
@@ -50,6 +84,7 @@ def compile_latex(latex_code: str) -> tuple[Optional[bytes], Optional[str]]:
                     text=True,
                     timeout=PDFLATEX_TIMEOUT,
                     cwd=str(tmpdir),
+                    env={**SANDBOX_ENV, "HOME": str(tmpdir)},
                 )
             except subprocess.TimeoutExpired:
                 return None, f"pdflatex timed out after {PDFLATEX_TIMEOUT}s"

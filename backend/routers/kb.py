@@ -137,6 +137,7 @@ async def _run_pipeline(request: KBGenerateRequest, db: AsyncSession) -> KBGener
             mode="kb",
             label=title[:128],
             job_description_preview=request.job_description[:100],
+            job_description=request.job_description,
             sections_modified="[]",
             modified_latex=latex,
             pdf_bytes=pdf_bytes,

@@ -78,8 +78,7 @@ export function Sidebar({ activeId, version, pdflatexOk, onNew, onOpen, onDelete
     <aside className="sidebar">
       <div className="sidebar__top">
         <div className="brand">
-          <span className="brand__serif">résumé</span>
-          <span className="brand__mono">.modifier</span>
+          <span className="brand__serif">Sourced</span>
         </div>
         <button className="icon-btn" onClick={onCollapse} aria-label="Hide sidebar" title="Hide sidebar">
           <SidebarIcon />

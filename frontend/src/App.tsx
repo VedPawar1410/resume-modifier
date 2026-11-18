@@ -1,8 +1,9 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { resumeApi } from "./api/resumeApi";
+import { AUTH_REQUIRED_EVENT, resumeApi } from "./api/resumeApi";
 import { ComposeView } from "./components/ComposeView";
 import { SidebarIcon } from "./components/Icons";
+import { LoginView } from "./components/LoginView";
 import { ResultView } from "./components/ResultView";
 import { Sidebar } from "./components/Sidebar";
 import { useResume } from "./hooks/useResume";
@@ -16,7 +17,35 @@ const PAGE = {
   transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] as const },
 };
 
+// "checking" until /api/session answers; "required" shows the password screen (deployed only).
+type AuthState = "checking" | "required" | "ok";
+
 export default function App() {
+  const [auth, setAuth] = useState<AuthState>("checking");
+
+  useEffect(() => {
+    resumeApi
+      .session()
+      .then((s) => setAuth(s.required && !s.valid ? "required" : "ok"))
+      .catch(() => setAuth("ok")); // backend unreachable: the workspace shows that itself
+    const onAuthRequired = () => setAuth("required");
+    window.addEventListener(AUTH_REQUIRED_EVENT, onAuthRequired);
+    return () => window.removeEventListener(AUTH_REQUIRED_EVENT, onAuthRequired);
+  }, []);
+
+  if (auth === "checking") {
+    return (
+      <div className="page page--center login">
+        <span className="spinner-dot" /> <span className="muted">Connecting…</span>
+      </div>
+    );
+  }
+  if (auth === "required") return <LoginView onSignedIn={() => setAuth("ok")} />;
+  return <Workspace />;
+}
+
+// Mounted only once signed in, so its first requests already carry the token.
+function Workspace() {
   const ws = useResume();
   const [jobDescription, setJobDescription] = useState("");
   const [kb, setKb] = useState<KBStatus | null>(null);

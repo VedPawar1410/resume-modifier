@@ -54,7 +54,9 @@ def _providers() -> list[Provider]:
     """
     s = get_settings()
     return [
-        Provider("Claude", s.anthropic_api_key, "https://api.anthropic.com/v1/", s.kb_model, 16000, False),
+        # 32k: with the full KB, Haiku used up to ~14k output tokens (thinking included); a
+        # cut-off answer is a failed résumé, and you only pay for tokens actually used.
+        Provider("Claude", s.anthropic_api_key, "https://api.anthropic.com/v1/", s.kb_model, 32000, False),
         Provider("Groq", s.groq_api_key, "https://api.groq.com/openai/v1", GROQ_MODEL, 4096, True),
         Provider("OpenRouter", s.openrouter_api_key, "https://openrouter.ai/api/v1", OPENROUTER_MODEL, 4096, True, {
             "HTTP-Referer": "https://github.com/VedPawar1410/resume-modifier",
@@ -101,12 +103,15 @@ async def call_ai(
                 messages=messages,
                 max_tokens=p.max_tokens,
                 stream=True,
+                stream_options={"include_usage": True},  # final chunk carries token counts
                 **extra,
             )
             parts: list[str] = []
             finish_reason = None
             async with stream:
                 async for chunk in stream:
+                    if chunk.usage:
+                        _log_usage(p.model, chunk.usage)
                     if not chunk.choices:
                         continue
                     choice = chunk.choices[0]
@@ -127,6 +132,22 @@ async def call_ai(
     if not errors:
         raise AIServiceError("No AI provider configured — set ANTHROPIC_API_KEY in .env")
     raise AIServiceError("All AI providers failed.\n" + "\n".join(errors))
+
+
+# $ per million tokens: (input, output) up to the long-prompt threshold, then (input, output) above it.
+# Claude Haiku 5.5 charges 5x for prompts over 100K tokens — the KB alone is ~68K, so watch this.
+PRICING = {"claude-haiku-5-5": (100_000, (0.10, 0.50), (0.50, 2.50))}
+
+
+def _log_usage(model: str, usage) -> None:
+    """Log tokens (and cost, when the model's price is known) for every AI call."""
+    tin, tout = usage.prompt_tokens, usage.completion_tokens
+    cost = ""
+    if model in PRICING:
+        threshold, normal, long = PRICING[model]
+        rate_in, rate_out = long if tin > threshold else normal
+        cost = f" cost=${(tin * rate_in + tout * rate_out) / 1_000_000:.4f}"
+    logger.info(f"AI usage: model={model} input={tin} output={tout}{cost}")
 
 
 def _strip_code_fences(text: str) -> str:
@@ -160,8 +181,11 @@ async def shorten_to_one_page(latex: str, page_count: int) -> tuple[str, str]:
     """Trim a resume that compiled to more than one page, without changing any facts."""
     system = (
         "You are a resume editor. Shorten the given LaTeX resume so it fits on exactly one page. "
-        "Cut the least relevant bullets, merge or tighten wordy ones, and drop optional sections "
-        "(e.g. Certifications) before cutting core experience. Never add new facts. Keep the "
+        "It usually overflows by only a few lines, so cut the MINIMUM: first tighten wordy bullets "
+        "so they take one line less, then remove single bullets from the least relevant entries. "
+        "Remove a whole entry only if that still isn't enough. The result should still fill most "
+        "of the page. Drop optional sections (e.g. Certifications) before cutting core experience. "
+        "Never add new facts. Keep the "
         "preamble unchanged, and update the first-line '% kb-ids:' comment if you remove an "
         "entry entirely. Output ONLY the complete LaTeX document — no explanation, no code fences."
     )

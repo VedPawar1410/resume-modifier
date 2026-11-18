@@ -63,7 +63,7 @@ it used. `extract_kb_ids()` parses it; history keeps it because it lives inside 
 OpenAI-compatible endpoints). Order: Claude (`KB_MODEL`, default `claude-haiku-5-5`, via
 `https://api.anthropic.com/v1/`) → Groq (`openai/gpt-oss-120b`) → OpenRouter (free deepseek).
 Gotchas: Claude rejects `temperature` and spends hidden thinking tokens that count as output, so it
-gets a 16k output cap; Groq's free tier counts prompt + `max_tokens` against an 8k tokens/min limit,
+gets a 32k output cap; Groq's free tier counts prompt + `max_tokens` against an 8k tokens/min limit,
 so a full KB prompt usually exceeds it. A `finish_reason == "length"` response is treated as a failure.
 
 **Page count** (`kb_service.count_pdf_pages`): pdfTeX compresses the page tree into object streams,
@@ -103,5 +103,22 @@ PDF is returned as base64 from the API; the frontend converts it to a blob URL v
 | `KB_PATH` | No | Path to kb.md (default `../resume-knowledge-base/kb.md`) |
 | `GROQ_API_KEY` | No | Fallback AI provider |
 | `OPENROUTER_API_KEY` | No | Second fallback AI provider |
+| `KB_GITHUB_REPO`, `GITHUB_TOKEN` | Deployed | Read kb.md from the private repo via the GitHub API (60 s cache) instead of `KB_PATH` |
+| `DATABASE_URL` | Deployed | Neon Postgres (converted for asyncpg in `database.py`); unset = local SQLite |
+| `APP_PASSWORD`, `AUTH_SECRET` | Deployed | Password gate (`routers/auth.py`); unset = no gate |
+| `CORS_ORIGINS` | Deployed | Extra allowed origins (the Vercel URL), comma-separated |
 
 `get_settings()` in `utils/config.py` is `@lru_cache`d — call it fresh in tests by clearing the cache.
+
+### Deployment (see `docs/DEPLOYMENT.md`)
+
+Vercel (frontend, `VITE_API_BASE_URL`) → Azure Container Apps (`backend/Dockerfile`, scale to zero) →
+Neon Postgres; CI/CD in `.github/workflows/`. Gotchas:
+- **Password gate is a plain ASGI middleware** (`PasswordGate` in `main.py`). Don't convert it to
+  `@app.middleware("http")`: BaseHTTPMiddleware hides client disconnects, which silently broke Cancel
+  (a cancelled generation ran to the end and was billed).
+- **LaTeX sandbox** (`latex_service.py`): TeX Live 2026's `openin_any=p` does *not* block absolute-path
+  reads, so pdflatex runs with a minimal env and, in the container (root), as `nobody` via `setpriv`
+  — it then can't read `/proc/1/environ`. The container must run as root for this.
+- New DB columns go in `ADDED_COLUMNS` in `database.py` (create_all never alters existing tables).
+- `backend/.dockerignore` keeps `*.db`, `backups/` and `.env` out of the public image.

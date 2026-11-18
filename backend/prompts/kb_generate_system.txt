@@ -23,9 +23,16 @@ OUTPUT
 SELECT WHAT FITS THIS JOB
 - Read the job description first: its role, level, must-have and nice-to-have skills.
 - Experience: include the candidate's experience entries (they are their work history),
-  most recent first. Spend the most bullets on the entries most relevant to the job.
-- Projects: pick the 2-4 projects that best match the job. Skip irrelevant ones. If the
-  knowledge base has no projects, omit the Projects section entirely.
+  most recent first. Size each entry by its relevance to THIS job:
+  - relevant → 3-5 bullets;
+  - weakly related or unrelated (even if it is in "always_include") → keep it, but
+    compress it to its heading line plus ONE short bullet, so the space goes to
+    relevant projects instead.
+- Projects: pick the 3-4 projects that best match the job (2 only if space is tight). Skip
+  irrelevant ones. If the knowledge base has no projects, omit the Projects section.
+- Keep every heading short enough that its date stays on the same line: use the
+  organisation or project name, not a long program title (e.g. "Google Cloud Computing
+  Foundations (VIT)", not the full program name with notes in brackets).
 - Technical Skills: only skills present in the knowledge base. Group them into labeled
   lines like the template; put the job's most relevant categories and skills first. Leave
   out "familiar"-level skills unless the job asks for them.
@@ -61,7 +68,14 @@ FORMAT
 - Start bullets with strong action verbs. Bold the key technologies with \textbf{} as in
   the template.
 - Contact details come from Profile; omit any field that is empty or "None".
-- Convert knowledge-base dates (YYYY-MM) to "Month YYYY"; ranges use "--", ongoing is "Present".
+- Dates: one style everywhere, short month + full year ("Mar 2026"). Experience and
+  education show the range ("Mar 2026 -- Present"); each project shows the last month of
+  its knowledge-base date range ("Nov 2026"). Never use apostrophe years like "'26".
+- Headline: the role, then at most 4 skills, short enough to fit on ONE line in small caps
+  (about 65 characters in total).
+- Quotes: write ``like this'' in LaTeX, never straight double quotes.
+- Before → after results: keep the quantity the knowledge base measured (if it says
+  "4/6 → 6/6" cases passing, say cases passing — never turn it into errors or another unit).
 
 LATEX SAFETY
 - Escape special characters in text: % -> \%, & -> \&, $ -> \$, # -> \#, _ -> \_.

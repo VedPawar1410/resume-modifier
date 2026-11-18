@@ -21,7 +21,54 @@ const compileApi = axios.create({
   timeout: 60_000,
 });
 
+// ── Password gate (deployed only) ────────────────────────────────────────────
+// The API trades the password for a 30-day token; we keep the token, never the password.
+// Storage can throw (private mode, blocked site data), so every access is guarded.
+const TOKEN_KEY = "sourced.token";
+export const AUTH_REQUIRED_EVENT = "sourced:auth-required";
+
+export function getToken(): string | null {
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function setToken(token: string | null) {
+  try {
+    if (token) localStorage.setItem(TOKEN_KEY, token);
+    else localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    /* the token then lasts only until reload — fine */
+  }
+}
+
+for (const client of [api, compileApi]) {
+  client.interceptors.request.use((config) => {
+    const token = getToken();
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+    return config;
+  });
+  // A 401 anywhere (token expired or revoked) sends the app back to the password screen.
+  client.interceptors.response.use(undefined, (error) => {
+    if (error?.response?.status === 401 && !error.config?.url?.endsWith("/api/login")) {
+      setToken(null);
+      window.dispatchEvent(new Event(AUTH_REQUIRED_EVENT));
+    }
+    return Promise.reject(error);
+  });
+}
+
 export const resumeApi = {
+  session: (): Promise<{ required: boolean; valid: boolean }> =>
+    api.get("/api/session").then((r) => r.data),
+
+  login: async (password: string): Promise<void> => {
+    const r = await api.post<{ token: string | null }>("/api/login", { password });
+    setToken(r.data.token);
+  },
+
   kbStatus: (): Promise<KBStatus> =>
     api.get<KBStatus>("/api/kb").then((r) => r.data),
 
