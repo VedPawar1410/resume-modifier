@@ -4,6 +4,17 @@ One place for everything planned, so nothing gets lost in long chats. Tick items
 (`[x]`), strike ones we drop (`~~like this~~`), and add new ones at the bottom of their section.
 Last updated: 2026-11-18.
 
+**Your live version is protected:** only `main` deploys (Azure + Vercel production). All Track B work
+happens on branches and pull requests, which get their own Vercel preview links and never touch
+production. A branch merges into `main` only when you say so.
+
+**Order from here:**
+1. *Now:* apply for jobs with the live app. Use the match report on applications that matter.
+2. *Soon, with you (~1 session):* **KB consistency session** (For Ved) — clears the wording conflicts.
+3. *Track B, on branches, in this order:* landing page (§2) → in-app KB builder (§3) → accounts (§4)
+   → usage limits (§6) → per-job controls (§5) → insights page (§7); v2 pipeline (§1b) when the
+   prompt nears ~90K tokens; domain + repo rename before a public launch (§1).
+
 **Two tracks, in this order:**
 1. **Track A — Ved's personal tool.** Done = you can open it from any device, paste a JD and get a
    résumé you'd send without edits. Then you go apply for jobs and stop worrying about this.
@@ -24,12 +35,30 @@ Last updated: 2026-11-18.
 - [x] **Decide on deployment** — option A (see *Track A* §4).
 - [x] **Pick a product name** — **Sourced** (2026-11-18): it names what's different, the knowledge base.
 - [x] **Set up the accounts for deployment** — Neon, GitHub KB token, Azure, Vercel (2026-11-18).
-- [ ] **Let Vercel see this repo** (for frontend auto-deploys): GitHub → Settings → Applications →
-      Vercel → Configure → Repository access → add `resume-modifier`. Then tell Claude to connect it.
-- [ ] **First real use on the live site** — sign in, generate a résumé for a real JD. This is also the
-      manual test pass: Claude can check every bullet against the KB afterwards.
-- [ ] **Manual test pass** after v2 lands (Track A §2): generate for 3–5 real JDs you'd apply to, check
-      every bullet against the KB, write anything odd under *Known issues*.
+- [x] **Let Vercel see this repo** — connected; pushes to `main` redeploy the frontend (2026-11-18).
+- [x] **First real use on the live site** — signed in, generated a résumé in ~1 min (2026-11-18).
+      Fixed on the way: the KB token needed **Contents: Read-only**.
+- [x] **Manual test pass** (2026-11-18) — Claude generated Ziro Digital (AI/ML mentor) and Eveo AI
+      (backend) and checked every bullet against the KB: all ~25 numbers traced to the right entry,
+      nothing invented, both one page with no repairs, ~1.3–1.4¢ each.
+- [x] **Set the Azure budget alert** (2 min): portal → Cost Management → Budgets → Add, $5/month with
+      email alerts at $1 and $5. An alert, not a cap — it tells you before a surprise bill.
+- [x] **Calendar reminder:** the GitHub KB token expires in a year — replace it then (DEPLOYMENT.md §2,
+      and the `az containerapp secret set` command), or the live app will say the KB isn't found.
+- [ ] **KB consistency session (Claude + Ved, later).** Claude does an in-depth pass over `kb.md` for
+      conflicting or awkward points; then we clear them one at a time and update the KB together.
+      Found so far in the test pass:
+  - [ ] `exp-stackular`: "Led a 4-member team (with our junior team)" is copied word for word and reads
+        oddly → reword (e.g. "including junior developers") once Ved confirms the meaning.
+  - [ ] `exp-general-motors`: a bullet says "Coded and maintained data pipelines" (LinkedIn) but its
+        note says "frame as learning and assisting" → one résumé said *maintained*, another *helped*.
+        Decide which is true and keep only that.
+  - [ ] `exp-google-cloud`: role is "Cloud Computing Intern" but the note says present it as a training
+        program → put "(training program)" in the role field so every résumé shows it.
+  - [ ] Mentoring evidence: no teaching/mentoring line anywhere, so mentor roles can't be matched —
+        add one if Ved guided the ATS team's juniors.
+  - [ ] Small: AWS appears as a skill from a course only (borderline); "about a couple of months"
+        hedges twice.
 - [ ] Two open KB questions (optional): how many people you showed Narrate to; the VIT course name for
       the wearable-sensor project.
 
@@ -65,14 +94,19 @@ Last updated: 2026-11-18.
        - **Locked-down LaTeX compiling** first: no shell escape, no reading files outside the work
          folder, time and memory limits — the editor sends any LaTeX to the server.
        - CI/CD: deploy after tests pass, like EquipTrack.
-5. [ ] **Nice for applying (optional):** match report (which JD skills you covered / left out / lack —
-       [docs/ideas/skill-gap-insights.md](docs/ideas/skill-gap-insights.md)), Open in Overleaf button.
+5. [x] **Match report** (2026-11-18) — a *Match report* button on each résumé: every JD requirement in
+       one of four buckets (on the résumé / in KB, left out / weak / missing), must-haves marked, the JD
+       quote and KB evidence per item, plus advice. On demand (~1.35¢, 30–60 s), then saved with the
+       résumé. Invented KB IDs are dropped server-side. Phase 1 of
+       [docs/ideas/skill-gap-insights.md](docs/ideas/skill-gap-insights.md).
+   ~~Open in Overleaf button~~ → parked (no use case yet; see Ideas).
 
        Built so far: Dockerfile (TeX Live basic + template packages, 693 MB), password gate + login
        screen, Neon support, KB read from GitHub, LaTeX sandbox (leak test: blocked), CI + Deploy
        workflows, [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-**→ Track A is done when 1, 3 and 4 are ticked and your manual test pass looks good.**
+**→ ✅ Track A is DONE (2026-11-18).** 1, 3 and 4 are ticked and the manual test pass came back
+clean. What's left for you is optional (budget alert, KB consistency session, §5 extras).
 
 ---
 
@@ -141,6 +175,8 @@ Quality pass round 1 — full KB (~68K tokens), Claude Haiku 5.5, 2026-11-18:
   Downloads. Later, after the basics are solid.
 - **Auto-save PDFs** to a chosen local folder (e.g. `~/Documents/Resumes/<company>.pdf`).
 - **Application tracker** — company, role, date, résumé used. Pairs with the match report.
+- **Open in Overleaf** — send the current LaTeX to Overleaf. Parked 2026-11-18: the built-in LaTeX
+  editor covers editing; revisit if collaborative editing is ever needed.
 - **Model A/B** — Haiku 5.5 vs Sonnet 5.5 on the same JD when quality matters.
 - **Prompt caching** — the KB is identical on every call, so caching it could cut input cost a lot;
   needs Anthropic's own SDK (a new dependency) instead of the OpenAI-compatible endpoint.
@@ -157,13 +193,14 @@ Quality pass round 1 — full KB (~68K tokens), Claude Haiku 5.5, 2026-11-18:
 - The trim pass over-cut once (dropped a project, left ~20% of the page empty); its prompt now asks for
   the minimum cut — not yet re-verified.
 - Experience order slipped once (GM listed above the later Google program) — watch in the manual pass.
-- Test résumés from the quality pass are in history (Ascendion ×2, Rippling ×2) — delete when done.
+- Test résumés from the quality pass are in your *local* history only (Ascendion ×2, Rippling ×2,
+  Ziro, Eveo) — the live app uses Neon, which starts empty. Delete locally whenever.
+- Match reports need the full JD, so résumés made before 2026-11-18 show "generate it again".
 - Chrome's PDF viewer shows its grey background for ~1s while a new PDF loads.
 - Cancel stops the output, but the input tokens (KB + JD) are already billed once the request starts.
 - The generating steps advance on typical timings — the backend doesn't stream real progress.
 - Groq's free tier (8K tokens/min) can't take a full-KB prompt, so the fallback can't cover Claude now.
 - Haiku 5.5 rejects `temperature` and spends hidden thinking tokens (output cap 32K) — see `CLAUDE.md`.
-- Each history entry stores only the first 100 characters of its JD.
 
 ## 🧭 Decisions log
 

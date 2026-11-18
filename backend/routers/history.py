@@ -15,7 +15,10 @@ from models.schemas import (
     SaveLatexRequest,
     SaveLatexResponse,
 )
+from services.ai_service import AIServiceError
+from services.kb_service import KBNotFoundError, load_kb
 from services.latex_service import compile_latex
+from services.match_service import MatchReport, build_match_report
 
 router = APIRouter(prefix="/api/history", tags=["history"])
 
@@ -145,3 +148,37 @@ async def delete_history_record(
     await db.commit()
     if result.rowcount == 0:
         raise HTTPException(status_code=404, detail="Record not found")
+
+
+@router.post("/{record_id}/match-report", response_model=MatchReport)
+async def match_report(
+    record_id: int,
+    refresh: bool = False,
+    db: AsyncSession = Depends(get_db),
+) -> MatchReport:
+    """
+    How this résumé covers its job description. Computed on demand (~1¢, 30–60 s) and saved, so
+    opening it again is free; `refresh=true` recomputes it (e.g. after editing the résumé).
+    """
+    record = await db.get(ResumeRecord, record_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Record not found")
+    if record.match_report and not refresh:
+        return MatchReport.model_validate_json(record.match_report)
+    if not record.job_description:
+        raise HTTPException(
+            status_code=409,
+            detail="This résumé was made before full job descriptions were saved — "
+                   "generate it again to get a match report.",
+        )
+    try:
+        kb_text = load_kb()
+    except KBNotFoundError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    try:
+        report = await build_match_report(kb_text, record.job_description, record.modified_latex)
+    except AIServiceError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    record.match_report = report.model_dump_json()
+    await db.commit()
+    return report

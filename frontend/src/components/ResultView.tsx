@@ -1,9 +1,10 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import type { CurrentResume, SaveState } from "../types";
-import { AlertIcon, CheckIcon, CloseIcon, CodeIcon, DownloadIcon, PlusIcon, SidebarIcon } from "./Icons";
+import { AlertIcon, CheckIcon, CloseIcon, CodeIcon, DownloadIcon, PlusIcon, SidebarIcon, SparkIcon } from "./Icons";
 import { parseDate } from "../utils/dates";
 import { LatexEditor } from "./LatexEditor";
+import { MatchReportPanel } from "./MatchReportPanel";
 
 interface Props {
   resume: CurrentResume;
@@ -69,6 +70,9 @@ export function ResultView({
   // App keys this component by record id, so the draft starts fresh for each résumé.
   const [draft, setDraft] = useState(resume.latex);
   const [wrap, setWrap] = useState(true);
+  // The match report uses the same side pane as the editor; only one is open at a time.
+  const [matchOpen, setMatchOpen] = useState(false);
+  const sideOpen = editorOpen || matchOpen;
   const draftRef = useRef(draft);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Timers fire after re-renders, so they call the latest onSave through a ref.
@@ -126,7 +130,7 @@ export function ResultView({
   const pageOk = resume.pageCount == null || resume.pageCount === 1;
 
   return (
-    <div className={`result ${editorOpen ? "result--editing" : ""}`}>
+    <div className={`result ${sideOpen ? "result--editing" : ""}`}>
       <header className="result__head">
         <div className="result__titles">
           {!sidebarOpen && (
@@ -149,10 +153,28 @@ export function ResultView({
               <CloseIcon /> Close editor
             </button>
           ) : (
-            <button className="btn btn--ghost" onClick={() => onEditorOpenChange(true)} disabled={!resume.recordId}>
+            <button
+              className="btn btn--ghost"
+              onClick={() => {
+                setMatchOpen(false);
+                onEditorOpenChange(true);
+              }}
+              disabled={!resume.recordId}
+            >
               <CodeIcon /> View LaTeX
             </button>
           )}
+          <button
+            className={`btn btn--ghost ${matchOpen ? "is-on" : ""}`}
+            onClick={() => {
+              if (!matchOpen && editorOpen) closeEditor();
+              setMatchOpen((open) => !open);
+            }}
+            disabled={!resume.recordId}
+            aria-pressed={matchOpen}
+          >
+            <SparkIcon /> Match report
+          </button>
           {resume.pdfUrl && (
             <a className="btn btn--ink" href={resume.pdfUrl} download={downloadName(draft, resume.title)}>
               <DownloadIcon /> Download PDF
@@ -202,8 +224,8 @@ export function ResultView({
               {/* Chrome's full viewer (zoom, fit, print). While editing, view=Fit keeps the
                   whole page in view so each live reload doesn't jump back to the top. */}
               <embed
-                key={`${resume.pdfUrl}-${editorOpen}`}
-                src={`${resume.pdfUrl}#navpanes=0${editorOpen ? "&view=Fit" : ""}`}
+                key={`${resume.pdfUrl}-${sideOpen}`}
+                src={`${resume.pdfUrl}#navpanes=0${sideOpen ? "&view=Fit" : ""}`}
                 type="application/pdf"
               />
             </motion.div>
@@ -215,6 +237,7 @@ export function ResultView({
         <AnimatePresence>
           {editorOpen && (
             <motion.section
+              key="editor"
               className="editor-pane"
               initial={{ opacity: 0, x: 24 }}
               animate={{ opacity: 1, x: 0 }}
@@ -239,6 +262,9 @@ export function ResultView({
               </div>
               <LatexEditor value={draft} onChange={handleChange} wrap={wrap} />
             </motion.section>
+          )}
+          {matchOpen && !editorOpen && resume.recordId && (
+            <MatchReportPanel key="match" recordId={resume.recordId} onClose={() => setMatchOpen(false)} />
           )}
         </AnimatePresence>
       </div>

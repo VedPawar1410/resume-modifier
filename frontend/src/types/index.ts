@@ -63,3 +63,23 @@ export interface KBStatus {
   last_updated?: string | null;
   error?: string | null;
 }
+
+// Match report (backend services/match_service.py)
+export type MatchStatus = "on_resume" | "left_out" | "weak" | "missing";
+
+export interface MatchRequirement {
+  skill: string;
+  category: string;
+  importance: "must-have" | "nice-to-have";
+  status: MatchStatus;
+  evidence: string[];
+  jd_quote: string;
+  note: string;
+}
+
+export interface MatchReport {
+  requirements: MatchRequirement[];
+  advice: string;
+  summary: { must_have_total: number; must_have_covered: number; counts: Record<MatchStatus, number> };
+  model: string;
+}

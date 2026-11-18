@@ -10,6 +10,7 @@ import httpx
 from utils.config import get_settings
 
 ENTRY_ID = re.compile(r"^### \[([a-z]+)-[a-z0-9-]+\]", re.MULTILINE)
+ENTRY_ID_FULL = re.compile(r"^### \[([a-z]+-[a-z0-9-]+)\]", re.MULTILINE)  # whole id, e.g. proj-x
 KB_IDS_LINE = re.compile(r"^%\s*kb-ids:\s*(.*)$", re.MULTILINE)
 TITLE_LINE = re.compile(r"^%\s*title:\s*(.+)$", re.MULTILINE)
 HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)

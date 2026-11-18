@@ -25,6 +25,7 @@ def _load_prompt(filename: str) -> str:
 # Load once at module import — these are static files
 KB_GENERATE_SYSTEM = _load_prompt("kb_generate_system.txt")
 KB_RESUME_TEMPLATE = _load_prompt("kb_resume_template.tex")
+MATCH_REPORT_SYSTEM = _load_prompt("match_report_system.txt")
 
 GROQ_MODEL       = "openai/gpt-oss-120b"
 OPENROUTER_MODEL = "deepseek/deepseek-r1-0528-qwen3-8b:free"
@@ -215,3 +216,20 @@ PDFLATEX ERROR:
 Output the corrected complete document only."""
 
     return await call_ai(system, user_message, temperature=0.1)
+
+
+# ── Match report (phase 1 of docs/ideas/skill-gap-insights.md) ───────────────
+
+async def match_report(kb_text: str, job_description: str, resume_body: str) -> tuple[str, str]:
+    """JD requirements vs KB vs the résumé → strict JSON text (parsed in match_service)."""
+    user_message = f"""JOB DESCRIPTION:
+{job_description}
+
+KNOWLEDGE BASE:
+{kb_text}
+
+RÉSUMÉ (LaTeX body):
+{resume_body}
+
+Output the JSON object only."""
+    return await call_ai(MATCH_REPORT_SYSTEM, user_message, temperature=0.1)

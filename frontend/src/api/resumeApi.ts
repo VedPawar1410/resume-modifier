@@ -5,6 +5,7 @@ import type {
   HistoryListResponse,
   HistoryRecord,
   KBStatus,
+  MatchReport,
   SaveLatexResponse,
 } from "../types";
 
@@ -94,6 +95,10 @@ export const resumeApi = {
   // Saves the edited LaTeX and recompiles it in one call (editor autosave + live preview).
   saveLatex: (id: number, latex_code: string): Promise<SaveLatexResponse> =>
     compileApi.put<SaveLatexResponse>(`/api/history/${id}/latex`, { latex_code }).then((r) => r.data),
+
+  // Saved with the résumé after the first run; refresh=true analyses it again (~1¢, 30–60 s).
+  matchReport: (id: number, refresh = false): Promise<MatchReport> =>
+    api.post<MatchReport>(`/api/history/${id}/match-report`, null, { params: { refresh } }).then((r) => r.data),
 
   deleteHistory: (id: number): Promise<void> =>
     api.delete(`/api/history/${id}`).then(() => undefined),
