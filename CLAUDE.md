@@ -62,6 +62,8 @@ it used. `extract_kb_ids()` parses it; history keeps it because it lives inside 
 **AI service** (`ai_service.py`): every provider is called through the `openai` SDK (all expose
 OpenAI-compatible endpoints). Order: Claude (`KB_MODEL`, default `claude-haiku-5-5`, via
 `https://api.anthropic.com/v1/`) → Groq (`openai/gpt-oss-120b`) → OpenRouter (free deepseek).
+`call_ai(order=...)` picks which providers to try; outreach passes `("Groq", "Gemini")` (Gemini via
+Google's OpenAI-compatible endpoint, `GEMINI_MODEL`), so it never falls through to paid Claude.
 Gotchas: Claude rejects `temperature` and spends hidden thinking tokens that count as output, so it
 gets a 32k output cap; Groq's free tier counts prompt + `max_tokens` against an 8k tokens/min limit,
 so a full KB prompt usually exceeds it. A `finish_reason == "length"` response is treated as a failure.
@@ -76,6 +78,10 @@ so it decompresses streams with zlib to read `/Count`.
 - `POST /api/compile` — recompile raw LaTeX to PDF with no AI (used by live-edit in frontend)
 - `/api/history…` — list / get LaTeX or PDF / rename / delete saved resumes (`mode="kb"`);
   `PUT /api/history/{id}/latex` saves edited LaTeX and recompiles (editor autosave)
+- `/api/history/{id}/outreach` — `GET` who-to-contact guide (search links built from the
+  `% title:` line, no AI) + saved drafts; `POST` writes one message (`services/outreach_service.py`,
+  prompt `prompts/outreach_system.txt`, JD + résumé + KB Profile/Targeting only); `PATCH`/`DELETE`
+  one draft. Drafts live as a JSON list in the `outreach` column.
 
 ### Frontend state flow
 
@@ -103,6 +109,7 @@ PDF is returned as base64 from the API; the frontend converts it to a blob URL v
 | `KB_PATH` | No | Path to kb.md (default `../resume-knowledge-base/kb.md`) |
 | `GROQ_API_KEY` | No | Fallback AI provider |
 | `OPENROUTER_API_KEY` | No | Second fallback AI provider |
+| `GEMINI_API_KEY`, `GEMINI_MODEL` | For outreach | Free Gemini (after Groq) for outreach messages; model default `gemini-3.5-flash` (override when Google retires it — a 404) |
 | `KB_GITHUB_REPO`, `GITHUB_TOKEN` | Deployed | Read kb.md from the private repo via the GitHub API (60 s cache) instead of `KB_PATH` |
 | `DATABASE_URL` | Deployed | Neon Postgres (converted for asyncpg in `database.py`); unset = local SQLite |
 | `APP_PASSWORD`, `AUTH_SECRET` | Deployed | Password gate (`routers/auth.py`); unset = no gate |

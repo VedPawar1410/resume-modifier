@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     groq_api_key: str = ""
     openrouter_api_key: str = ""
+    # Free Gemini key (aistudio.google.com) — outreach messages only, after Groq.
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-3.5-flash"  # 2.5 is retired for new keys (404)
 
     # Primary model for resume generation (Claude, via Anthropic's OpenAI-compatible
     # endpoint). Groq and OpenRouter are fallbacks.

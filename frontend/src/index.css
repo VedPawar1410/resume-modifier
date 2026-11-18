@@ -628,3 +628,42 @@ kbd {
 .match__note { margin: 4px 0 0; color: var(--ink-2); }
 .match__quote { margin: 4px 0 0; font-style: italic; }
 .match__evidence { margin: 4px 0 0; font-size: 11px; color: var(--muted); }
+
+/* ── Outreach panel (shares .editor-pane / .match__body with the match report) ── */
+.outreach__section { padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
+.outreach__section:last-child { border-bottom: 0; margin-bottom: 0; }
+.outreach__h { margin: 0; font-size: 14px; font-weight: 600; }
+.outreach__sub { margin: -4px 0 0; }
+.outreach__links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.outreach__links li { display: flex; flex-direction: column; gap: 1px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.outreach__links a { font-size: 14px; font-weight: 500; color: var(--accent); text-decoration: none; }
+.outreach__links a:hover { text-decoration: underline; }
+.outreach__tips { margin: 0; padding-left: 18px; color: var(--ink-2); line-height: 1.55; }
+.outreach__kinds { display: flex; flex-wrap: wrap; gap: 6px; }
+.outreach__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 560px) { .outreach__grid { grid-template-columns: 1fr; } }
+.outreach .field-label { margin-bottom: 4px; }
+.outreach__input {
+  width: 100%;
+  min-height: 36px;
+  padding: 7px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.outreach__input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.outreach__notes { min-height: 64px; resize: vertical; }
+.outreach .btn--ink { align-self: flex-start; }
+.outreach__draft { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.outreach__draft-head { display: flex; align-items: center; gap: 8px; }
+.outreach__to { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
+.outreach__subject { display: flex; gap: 6px; align-items: center; }
+.outreach__body { resize: vertical; white-space: pre-wrap; }
+.outreach__draft-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.outreach__model { flex: 1; text-align: right; }
+.outreach__count { color: var(--muted); }
+.outreach__count.is-near { color: var(--warn); }
+.outreach__count.is-over { color: var(--danger); margin: 0; }

@@ -104,6 +104,21 @@ production. A branch merges into `main` only when you say so.
        Built so far: Dockerfile (TeX Live basic + template packages, 693 MB), password gate + login
        screen, Neon support, KB read from GitHub, LaTeX sandbox (leak test: blocked), CI + Deploy
        workflows, [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+6. [x] **Outreach** (2026-11-18) — an *Outreach* button on each résumé:
+       - [x] **Who to contact:** ready-made LinkedIn and Google searches for the company (recruiters,
+             hiring managers, people in the role, alumni from your school), plus tips. Links only:
+             Sourced never logs in to or scrapes LinkedIn (against its terms).
+       - [x] **Messages:** cold email, connection note (300 characters, free accounts 200),
+             LinkedIn message / InMail, referral ask. Written from the JD, the résumé and the KB's
+             Profile + Targeting only. Each draft is saved with the résumé, editable, copyable.
+       - [x] **Free only:** Groq (gpt-oss-120b), then Gemini. Never Claude. ~3.5K tokens per message.
+       - [ ] **You:** create a free Gemini key (aistudio.google.com), put `GEMINI_API_KEY` in `.env`,
+             and add both keys to Azure ([DEPLOYMENT.md](docs/DEPLOYMENT.md) → *Outreach keys*).
+             Until then the live app has no outreach provider.
+       - [ ] **Writing standards pass** — tune `backend/prompts/outreach_system.txt` once you've sent
+             a few and seen what gets replies.
+       - [ ] Later: find work emails (pattern guess, or Hunter/Apollo with a key); mark drafts
+             sent / replied (pairs with the application tracker idea).
 
 **→ ✅ Track A is DONE (2026-11-18).** 1, 3 and 4 are ticked and the manual test pass came back
 clean. What's left for you is optional (budget alert, KB consistency session, §5 extras).
@@ -220,3 +235,5 @@ Quality pass round 1 — full KB (~68K tokens), Claude Haiku 5.5, 2026-11-18:
 | 2026-11-18 | Login = signed bearer token, not a cookie | Vercel and Azure are different domains; cross-site cookies get blocked |
 | 2026-11-18 | LaTeX sandboxed at the OS level (`nobody` + minimal env) | TeX's own paranoid mode didn't block absolute-path reads (tested) |
 | 2026-11-18 | TeX Live from its installer, not Debian packages | fontawesome5 via Debian pulls ~1 GB of fonts; image is 693 MB |
+| 2026-11-18 | Outreach on free providers only (Groq → Gemini, no Claude) | Messages need only the JD + résumé (~3.5K tokens), which free tiers handle |
+| 2026-11-18 | Who-to-contact = search links, no LinkedIn scraping | LinkedIn's terms forbid automation; Ved picks the person |

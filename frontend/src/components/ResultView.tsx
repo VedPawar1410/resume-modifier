@@ -1,10 +1,11 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import type { CurrentResume, SaveState } from "../types";
-import { AlertIcon, CheckIcon, CloseIcon, CodeIcon, DownloadIcon, PlusIcon, SidebarIcon, SparkIcon } from "./Icons";
+import { AlertIcon, CheckIcon, CloseIcon, CodeIcon, DownloadIcon, MailIcon, PlusIcon, SidebarIcon, SparkIcon } from "./Icons";
 import { parseDate } from "../utils/dates";
 import { LatexEditor } from "./LatexEditor";
 import { MatchReportPanel } from "./MatchReportPanel";
+import { OutreachPanel } from "./OutreachPanel";
 
 interface Props {
   resume: CurrentResume;
@@ -70,9 +71,13 @@ export function ResultView({
   // App keys this component by record id, so the draft starts fresh for each résumé.
   const [draft, setDraft] = useState(resume.latex);
   const [wrap, setWrap] = useState(true);
-  // The match report uses the same side pane as the editor; only one is open at a time.
-  const [matchOpen, setMatchOpen] = useState(false);
-  const sideOpen = editorOpen || matchOpen;
+  // The match report and outreach use the same side pane as the editor; one at a time.
+  const [panel, setPanel] = useState<"match" | "outreach" | null>(null);
+  const sideOpen = editorOpen || panel !== null;
+  const togglePanel = (which: "match" | "outreach") => {
+    if (panel !== which && editorOpen) closeEditor();
+    setPanel((open) => (open === which ? null : which));
+  };
   const draftRef = useRef(draft);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Timers fire after re-renders, so they call the latest onSave through a ref.
@@ -156,7 +161,7 @@ export function ResultView({
             <button
               className="btn btn--ghost"
               onClick={() => {
-                setMatchOpen(false);
+                setPanel(null);
                 onEditorOpenChange(true);
               }}
               disabled={!resume.recordId}
@@ -165,15 +170,20 @@ export function ResultView({
             </button>
           )}
           <button
-            className={`btn btn--ghost ${matchOpen ? "is-on" : ""}`}
-            onClick={() => {
-              if (!matchOpen && editorOpen) closeEditor();
-              setMatchOpen((open) => !open);
-            }}
+            className={`btn btn--ghost ${panel === "match" ? "is-on" : ""}`}
+            onClick={() => togglePanel("match")}
             disabled={!resume.recordId}
-            aria-pressed={matchOpen}
+            aria-pressed={panel === "match"}
           >
             <SparkIcon /> Match report
+          </button>
+          <button
+            className={`btn btn--ghost ${panel === "outreach" ? "is-on" : ""}`}
+            onClick={() => togglePanel("outreach")}
+            disabled={!resume.recordId}
+            aria-pressed={panel === "outreach"}
+          >
+            <MailIcon /> Outreach
           </button>
           {resume.pdfUrl && (
             <a className="btn btn--ink" href={resume.pdfUrl} download={downloadName(draft, resume.title)}>
@@ -263,8 +273,11 @@ export function ResultView({
               <LatexEditor value={draft} onChange={handleChange} wrap={wrap} />
             </motion.section>
           )}
-          {matchOpen && !editorOpen && resume.recordId && (
-            <MatchReportPanel key="match" recordId={resume.recordId} onClose={() => setMatchOpen(false)} />
+          {panel === "match" && !editorOpen && resume.recordId && (
+            <MatchReportPanel key="match" recordId={resume.recordId} onClose={() => setPanel(null)} />
+          )}
+          {panel === "outreach" && !editorOpen && resume.recordId && (
+            <OutreachPanel key="outreach" recordId={resume.recordId} onClose={() => setPanel(null)} />
           )}
         </AnimatePresence>
       </div>

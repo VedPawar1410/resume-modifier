@@ -26,6 +26,7 @@ def _load_prompt(filename: str) -> str:
 KB_GENERATE_SYSTEM = _load_prompt("kb_generate_system.txt")
 KB_RESUME_TEMPLATE = _load_prompt("kb_resume_template.tex")
 MATCH_REPORT_SYSTEM = _load_prompt("match_report_system.txt")
+OUTREACH_SYSTEM = _load_prompt("outreach_system.txt")
 
 GROQ_MODEL       = "openai/gpt-oss-120b"
 OPENROUTER_MODEL = "deepseek/deepseek-r1-0528-qwen3-8b:free"
@@ -43,6 +44,12 @@ class Provider(NamedTuple):
     max_tokens: int  # output cap
     accepts_temperature: bool
     headers: dict[str, str] = {}
+    accepts_reasoning_effort: bool = False  # OpenAI-style "low" | "medium" | "high"
+
+
+# Who gets tried when a caller doesn't say. Gemini is only used where a caller names it
+# (outreach), so résumé generation keeps its tested chain.
+DEFAULT_ORDER = ("Claude", "Groq", "OpenRouter")
 
 
 def _providers() -> list[Provider]:
@@ -58,7 +65,11 @@ def _providers() -> list[Provider]:
         # 32k: with the full KB, Haiku used up to ~14k output tokens (thinking included); a
         # cut-off answer is a failed résumé, and you only pay for tokens actually used.
         Provider("Claude", s.anthropic_api_key, "https://api.anthropic.com/v1/", s.kb_model, 32000, False),
-        Provider("Groq", s.groq_api_key, "https://api.groq.com/openai/v1", GROQ_MODEL, 4096, True),
+        Provider("Groq", s.groq_api_key, "https://api.groq.com/openai/v1", GROQ_MODEL, 4096, True,
+                 accepts_reasoning_effort=True),
+        # Google's OpenAI-compatible endpoint, so the same SDK works with no new dependency.
+        Provider("Gemini", s.gemini_api_key, "https://generativelanguage.googleapis.com/v1beta/openai/",
+                 s.gemini_model, 8192, True, accepts_reasoning_effort=True),
         Provider("OpenRouter", s.openrouter_api_key, "https://openrouter.ai/api/v1", OPENROUTER_MODEL, 4096, True, {
             "HTTP-Referer": "https://github.com/VedPawar1410/resume-modifier",
             "X-Title": "Resume Modifier",
@@ -78,9 +89,15 @@ async def call_ai(
     system_prompt: str,
     user_message: str,
     temperature: float = 0.3,
+    order: tuple[str, ...] = DEFAULT_ORDER,
+    max_tokens: int | None = None,
+    reasoning_effort: str | None = None,
 ) -> tuple[str, str]:
     """
-    Try each configured provider in order (Claude → Groq → OpenRouter).
+    Try each configured provider named in `order` (default Claude → Groq → OpenRouter).
+    Providers not in `order` are never tried — outreach passes ("Groq", "Gemini") so it can't
+    fall through to the paid model. `max_tokens` lowers the output cap; `reasoning_effort` goes
+    only to providers that accept it.
     Returns (response text, model that produced it).
     Raises AIServiceError if every configured provider fails.
     """
@@ -89,12 +106,17 @@ async def call_ai(
         {"role": "user",   "content": user_message},
     ]
     errors: list[str] = []
+    by_name = {p.name: p for p in _providers()}
+    chain = [by_name[name] for name in order if name in by_name]
 
-    for p in _providers():
+    for p in chain:
         if not p.api_key:
             continue
         client = AsyncOpenAI(api_key=p.api_key, base_url=p.base_url, default_headers=p.headers)
         extra = {"temperature": temperature} if p.accepts_temperature else {}
+        if reasoning_effort and p.accepts_reasoning_effort:
+            extra["reasoning_effort"] = reasoning_effort
+        cap = min(p.max_tokens, max_tokens) if max_tokens else p.max_tokens
         try:
             # Streamed so a cancel can stop generation: if the user cancels, this coroutine is
             # cancelled, the `async with` closes the connection, and the provider stops writing
@@ -102,7 +124,7 @@ async def call_ai(
             stream = await client.chat.completions.create(
                 model=p.model,
                 messages=messages,
-                max_tokens=p.max_tokens,
+                max_tokens=cap,
                 stream=True,
                 stream_options={"include_usage": True},  # final chunk carries token counts
                 **extra,
@@ -122,7 +144,7 @@ async def call_ai(
                         finish_reason = choice.finish_reason
             if finish_reason == "length":
                 # A cut-off resume is broken LaTeX — treat it as a failure, not a result.
-                raise AIServiceError(f"output cut off at max_tokens={p.max_tokens}")
+                raise AIServiceError(f"output cut off at max_tokens={cap}")
             return _strip_code_fences("".join(parts).strip()), p.model
         # Catches provider errors only. A cancel raises CancelledError, which is not an
         # Exception, so it skips this and doesn't fall through to the next provider.
@@ -131,7 +153,8 @@ async def call_ai(
             errors.append(f"{p.name}: {_describe_error(e)}")
 
     if not errors:
-        raise AIServiceError("No AI provider configured — set ANTHROPIC_API_KEY in .env")
+        keys = " or ".join(f"{p.name.upper()}_API_KEY" for p in chain)
+        raise AIServiceError(f"No AI provider configured — set {keys} in .env")
     raise AIServiceError("All AI providers failed.\n" + "\n".join(errors))
 
 
@@ -233,3 +256,18 @@ RÉSUMÉ (LaTeX body):
 
 Output the JSON object only."""
     return await call_ai(MATCH_REPORT_SYSTEM, user_message, temperature=0.1)
+
+
+# ── Outreach messages (cold email / LinkedIn) ────────────────────────────────
+
+async def outreach_message(user_message: str) -> tuple[str, str]:
+    """
+    One outreach draft → JSON text {"subject", "body"} (parsed in outreach_service).
+    Free providers only (Ved's decision): the prompt is small (~5K tokens, no full KB), which
+    fits Groq's 8K tokens/minute; a second message in the same minute falls to Gemini. Low
+    reasoning effort and a 2K cap keep it inside Groq's limit (prompt + cap both count).
+    """
+    return await call_ai(
+        OUTREACH_SYSTEM, user_message, temperature=0.5,
+        order=("Groq", "Gemini"), max_tokens=2048, reasoning_effort="low",
+    )

@@ -83,3 +83,37 @@ export interface MatchReport {
   summary: { must_have_total: number; must_have_covered: number; counts: Record<MatchStatus, number> };
   model: string;
 }
+
+// ── Outreach (cold email / LinkedIn) — mirrors backend services/outreach_service.py ──
+export type OutreachKind = "email" | "connection_note" | "linkedin_message" | "referral_ask";
+export type OutreachRelationship = "recruiter" | "hiring_manager" | "engineer" | "alum" | "other";
+
+export interface OutreachRequest {
+  kind: OutreachKind;
+  recipient_name: string;
+  recipient_role: string;
+  relationship: OutreachRelationship;
+  position: string;
+  notes: string;
+}
+
+export interface OutreachDraft extends OutreachRequest {
+  id: string;
+  created_at: string;
+  subject: string;
+  body: string;
+  model: string;
+  warning: string;
+}
+
+export interface OutreachGuide {
+  company: string;
+  role: string;
+  links: { label: string; url: string; hint: string }[];
+  tips: string[];
+}
+
+export interface OutreachState {
+  guide: OutreachGuide;
+  drafts: OutreachDraft[];
+}

@@ -162,6 +162,23 @@ Open the Vercel URL, sign in with your `APP_PASSWORD`, generate a résumé. Done
 > connected to GitHub so every push to `main` redeploys it (Vercel's GitHub app was given access to
 > this repo under GitHub → Settings → Applications → Vercel → Configure).
 
+## Outreach keys (Groq + Gemini)
+
+Outreach messages use only the free providers, so the API needs both keys (it never falls back to
+Claude). Get a Groq key at console.groq.com and a Gemini key at aistudio.google.com, then:
+
+```bash
+read -s "GROQ_API_KEY?Groq key: "; echo
+read -s "GEMINI_API_KEY?Gemini key: "; echo
+az containerapp secret set -n sourced-api -g sourced-rg \
+  --secrets groq-api-key="$GROQ_API_KEY" gemini-api-key="$GEMINI_API_KEY"
+az containerapp update -n sourced-api -g sourced-rg \
+  --set-env-vars GROQ_API_KEY=secretref:groq-api-key GEMINI_API_KEY=secretref:gemini-api-key
+```
+
+The `update` starts a new revision that picks the keys up. Without them, the Outreach panel says
+no provider is configured; résumés are unaffected.
+
 ## Cost guardrails
 
 | Guardrail | Setting |

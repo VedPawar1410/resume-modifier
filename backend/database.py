@@ -44,7 +44,7 @@ class Base(DeclarativeBase):
 # Columns added after the first release. create_all() makes new tables but never alters
 # existing ones, so an older database gets them added here. (Small enough not to need a
 # migration tool; switch to Alembic if the schema starts changing often.)
-ADDED_COLUMNS = {"resume_records": {"job_description": "TEXT", "match_report": "TEXT"}}
+ADDED_COLUMNS = {"resume_records": {"job_description": "TEXT", "match_report": "TEXT", "outreach": "TEXT"}}
 
 
 def _add_missing_columns(sync_conn) -> None:

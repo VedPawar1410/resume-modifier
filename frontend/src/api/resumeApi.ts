@@ -6,6 +6,9 @@ import type {
   HistoryRecord,
   KBStatus,
   MatchReport,
+  OutreachDraft,
+  OutreachRequest,
+  OutreachState,
   SaveLatexResponse,
 } from "../types";
 
@@ -99,6 +102,19 @@ export const resumeApi = {
   // Saved with the résumé after the first run; refresh=true analyses it again (~1¢, 30–60 s).
   matchReport: (id: number, refresh = false): Promise<MatchReport> =>
     api.post<MatchReport>(`/api/history/${id}/match-report`, null, { params: { refresh } }).then((r) => r.data),
+
+  // Outreach: free providers only (Groq → Gemini), a few seconds per message, saved with the résumé.
+  outreach: (id: number): Promise<OutreachState> =>
+    api.get<OutreachState>(`/api/history/${id}/outreach`).then((r) => r.data),
+
+  createOutreach: (id: number, req: OutreachRequest): Promise<OutreachDraft> =>
+    api.post<OutreachDraft>(`/api/history/${id}/outreach`, req).then((r) => r.data),
+
+  updateOutreach: (id: number, draftId: string, patch: { subject?: string; body?: string }): Promise<OutreachDraft> =>
+    api.patch<OutreachDraft>(`/api/history/${id}/outreach/${draftId}`, patch).then((r) => r.data),
+
+  deleteOutreach: (id: number, draftId: string): Promise<void> =>
+    api.delete(`/api/history/${id}/outreach/${draftId}`).then(() => undefined),
 
   deleteHistory: (id: number): Promise<void> =>
     api.delete(`/api/history/${id}`).then(() => undefined),

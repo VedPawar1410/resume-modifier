@@ -16,9 +16,19 @@ from models.schemas import (
     SaveLatexResponse,
 )
 from services.ai_service import AIServiceError
-from services.kb_service import KBNotFoundError, load_kb
+from services.kb_service import KBNotFoundError, extract_title, load_kb
 from services.latex_service import compile_latex
 from services.match_service import MatchReport, build_match_report
+from services.outreach_service import (
+    Draft,
+    DraftUpdate,
+    OutreachRequest,
+    OutreachState,
+    dump_drafts,
+    generate_draft,
+    load_drafts,
+    who_to_contact,
+)
 
 router = APIRouter(prefix="/api/history", tags=["history"])
 
@@ -182,3 +192,79 @@ async def match_report(
     record.match_report = report.model_dump_json()
     await db.commit()
     return report
+
+
+# ── Outreach (cold email / LinkedIn) ─────────────────────────────────────────
+
+async def _get_record(db: AsyncSession, record_id: int) -> ResumeRecord:
+    record = await db.get(ResumeRecord, record_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Record not found")
+    return record
+
+
+def _load_kb_or_503() -> str:
+    try:
+        return load_kb()
+    except KBNotFoundError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@router.get("/{record_id}/outreach", response_model=OutreachState)
+async def get_outreach(record_id: int, db: AsyncSession = Depends(get_db)) -> OutreachState:
+    """The who-to-contact guide (built from the résumé title, no AI) and every saved draft."""
+    record = await _get_record(db, record_id)
+    title = extract_title(record.modified_latex) or record.label
+    return OutreachState(guide=who_to_contact(title, _load_kb_or_503()), drafts=load_drafts(record.outreach))
+
+
+@router.post("/{record_id}/outreach", response_model=Draft)
+async def create_outreach(
+    record_id: int, req: OutreachRequest, db: AsyncSession = Depends(get_db),
+) -> Draft:
+    """Generate one message with the free providers (Groq → Gemini) and save it with the résumé."""
+    record = await _get_record(db, record_id)
+    if not record.job_description:
+        raise HTTPException(
+            status_code=409,
+            detail="This résumé was made before full job descriptions were saved — "
+                   "generate it again to write messages for it.",
+        )
+    kb_text = _load_kb_or_503()
+    try:
+        draft = await generate_draft(req, kb_text, record.job_description, record.modified_latex)
+    except AIServiceError as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"The free AI providers are busy or failed — try again in a minute.\n{e}",
+        )
+    record.outreach = dump_drafts([*load_drafts(record.outreach), draft])
+    await db.commit()
+    return draft
+
+
+@router.patch("/{record_id}/outreach/{draft_id}", response_model=Draft)
+async def update_outreach(
+    record_id: int, draft_id: str, update: DraftUpdate, db: AsyncSession = Depends(get_db),
+) -> Draft:
+    """Save an edited subject or body."""
+    record = await _get_record(db, record_id)
+    drafts = load_drafts(record.outreach)
+    for i, d in enumerate(drafts):
+        if d.id == draft_id:
+            drafts[i] = d.model_copy(update=update.model_dump(exclude_none=True))
+            record.outreach = dump_drafts(drafts)
+            await db.commit()
+            return drafts[i]
+    raise HTTPException(status_code=404, detail="Draft not found")
+
+
+@router.delete("/{record_id}/outreach/{draft_id}", status_code=204)
+async def delete_outreach(record_id: int, draft_id: str, db: AsyncSession = Depends(get_db)) -> None:
+    record = await _get_record(db, record_id)
+    drafts = load_drafts(record.outreach)
+    kept = [d for d in drafts if d.id != draft_id]
+    if len(kept) == len(drafts):
+        raise HTTPException(status_code=404, detail="Draft not found")
+    record.outreach = dump_drafts(kept)
+    await db.commit()
