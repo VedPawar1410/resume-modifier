@@ -53,7 +53,8 @@ Use the same region family throughout (examples: Singapore).
 
 GitHub → **Settings → Developer settings → Fine-grained tokens → Generate new token**:
 - Repository access: **Only select repositories → `resume-knowledge-base`**
-- Permissions: **Contents → Read-only** (nothing else)
+- Permissions: **Contents → Read-only** (nothing else). It starts as *No access* — if you miss it,
+  GitHub answers **404** (it hides private repos) and the app says the knowledge base wasn't found.
 - Expiration: 1 year (put a reminder in your calendar)
 
 That's `GITHUB_TOKEN`. It can read `kb.md` and nothing else.
@@ -65,6 +66,13 @@ Merge this to `main`. CI runs, then Deploy builds and pushes `ghcr.io/vedpawar14
 sourced-api → Package settings → Change visibility → Public**, so Azure can pull it without a password.
 
 ### 4. Azure
+
+> **As deployed (2026-11-18):** this subscription allows only **one** Container Apps environment,
+> and EquipTrack's `equiptrack-env` (Southeast Asia) already exists. So `sourced-api` lives in its
+> own resource group `sourced-rg` but runs in `equiptrack-env` (passed by resource ID to
+> `--environment`). **Deleting `equiptrack-rg` would take Sourced down too.** The `env create` below
+> applies only to a subscription without an environment yet.
+> API: `https://sourced-api.gentlepebble-21bd32f0.southeastasia.azurecontainerapps.io`
 
 ```bash
 az login
@@ -125,9 +133,10 @@ az role assignment create --assignee "$APP_ID" --role Contributor \
 echo "AZURE_CLIENT_ID=$APP_ID  AZURE_TENANT_ID=$TENANT  AZURE_SUBSCRIPTION_ID=$SUB"
 ```
 
-If the first deploy fails with `AADSTS700213: No matching federated identity record`, GitHub sent its
-newer subject format: copy the `subject claim` the `azure/login` step printed and update the
-credential with `az ad app federated-credential update` (same as EquipTrack).
+If the first deploy fails with `AADSTS700213: No matching federated identity record`, the subject
+format didn't match: copy the `subject claim` the `azure/login` step printed and update the
+credential with `az ad app federated-credential update`. GitHub isn't consistent here: EquipTrack
+sends the newer ID format, while this repo sends the classic `repo:VedPawar1410/resume-modifier:environment:production`.
 
 GitHub repo → **Settings → Environments → New environment `production`** → secrets
 `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`. Then **Settings → Secrets and variables →
@@ -147,6 +156,11 @@ az containerapp update -n sourced-api -g sourced-rg \
 ```
 
 Open the Vercel URL, sign in with your `APP_PASSWORD`, generate a résumé. Done.
+
+> **As deployed:** project `sourced` (created with `vercel link` from `frontend/`, Root Directory set
+> to `frontend`), live at https://sourced-orcin.vercel.app with `CORS_ORIGINS` set to it, and
+> connected to GitHub so every push to `main` redeploys it (Vercel's GitHub app was given access to
+> this repo under GitHub → Settings → Applications → Vercel → Configure).
 
 ## Cost guardrails
 

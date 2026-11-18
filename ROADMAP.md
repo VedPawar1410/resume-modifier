@@ -23,9 +23,11 @@ Last updated: 2026-11-18.
 - [x] **Fix `git push` for this repo** (now HTTPS).
 - [x] **Decide on deployment** — option A (see *Track A* §4).
 - [x] **Pick a product name** — **Sourced** (2026-11-18): it names what's different, the knowledge base.
-- [ ] **Set up the accounts for deployment** — Neon project, GitHub read-only KB token, Azure resources,
-      Vercel project. Step-by-step in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md); Claude can run the
-      Azure/Vercel CLI steps with you, you type every secret.
+- [x] **Set up the accounts for deployment** — Neon, GitHub KB token, Azure, Vercel (2026-11-18).
+- [ ] **Let Vercel see this repo** (for frontend auto-deploys): GitHub → Settings → Applications →
+      Vercel → Configure → Repository access → add `resume-modifier`. Then tell Claude to connect it.
+- [ ] **First real use on the live site** — sign in, generate a résumé for a real JD. This is also the
+      manual test pass: Claude can check every bullet against the KB afterwards.
 - [ ] **Manual test pass** after v2 lands (Track A §2): generate for 3–5 real JDs you'd apply to, check
       every bullet against the KB, write anything odd under *Known issues*.
 - [ ] Two open KB questions (optional): how many people you showed Narrate to; the VIT course name for
@@ -53,8 +55,9 @@ Last updated: 2026-11-18.
          before switching.
 3. [x] **Store the full JD** with each history entry (new `job_description` column; older entries keep
        only their 100-character preview).
-4. [ ] **Deploy for yourself (option A)** — code done and tested locally (2026-11-18); waiting on the
-       account setup in *For Ved*. The EquipTrack setup:
+4. [x] **Deploy for yourself (option A)** — **live 2026-11-18** at https://sourced-orcin.vercel.app
+       (API: sourced-api in `sourced-rg`, sharing `equiptrack-env`; GitHub → Azure deploys verified
+       end to end). Left: let Vercel's GitHub app see this repo so frontend pushes auto-deploy. The setup:
        - API + TeX Live in one Docker image → Azure Container Apps (scale to zero, free monthly grant).
        - Frontend → Vercel. History → Neon Postgres (free hosts wipe SQLite).
        - `kb.md` fetched from your private repo with a read-only GitHub token.

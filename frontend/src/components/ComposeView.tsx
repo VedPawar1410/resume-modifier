@@ -140,7 +140,7 @@ export function ComposeView({ kb, onRefreshKb, jobDescription, onJobDescriptionC
               </>
             ) : (
               <span className="text-danger">
-                Knowledge base not found at <code>{kb.path}</code> — set <code>KB_PATH</code> in <code>.env</code>.
+                Knowledge base not found at <code>{kb.path}</code>{kb.error ? ` — ${kb.error}` : ""}
               </span>
             )}
           </div>

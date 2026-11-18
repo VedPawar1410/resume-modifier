@@ -26,3 +26,6 @@ changes_to_make.txt
 
 # Local DB backups (contain personal resume data)
 backend/backups/
+
+# Personal notes and links (never committed)
+*.local.md

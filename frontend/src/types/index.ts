@@ -61,4 +61,5 @@ export interface KBStatus {
   entry_count: number;
   entries_by_section: Record<string, number>;
   last_updated?: string | null;
+  error?: string | null;
 }

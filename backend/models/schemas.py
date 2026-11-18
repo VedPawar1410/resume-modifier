@@ -48,6 +48,7 @@ class KBStatus(BaseModel):
     entry_count: int = 0
     entries_by_section: dict[str, int] = {}
     last_updated: Optional[str] = None
+    error: Optional[str] = None  # why it wasn't found (shown in the UI)
 
 
 class KBGenerateRequest(BaseModel):

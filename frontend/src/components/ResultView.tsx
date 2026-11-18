@@ -21,8 +21,23 @@ interface Props {
 const AUTOSAVE_MS = 900;
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-function slug(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 60) || "resume";
+// "Ved Pawar" / "Ascendion" → "Ved_Pawar" / "Ascendion" (letters and digits only, for any OS).
+function filePart(s: string): string {
+  return s
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "") // é → e
+    .replace(/[^A-Za-z0-9]+/g, "_")
+    .replace(/(^_|_$)/g, "")
+    .slice(0, 40);
+}
+
+// Recruiter-friendly name: Ved_Pawar_Resume_Ascendion.pdf. The name comes from the résumé's
+// own header ({\Huge \scshape Full Name}); the company is the title's part before " — ".
+function downloadName(latex: string, title: string): string {
+  const name = latex.match(/\\Huge\s*\\scshape\s+([^}\\]+)\}/)?.[1]?.trim();
+  const company = filePart(title.split(/\s+[—–-]\s+/)[0]);
+  const parts = [name && filePart(name), "Resume", company.toLowerCase() !== "resume" && company];
+  return parts.filter(Boolean).join("_") + ".pdf";
 }
 
 function SaveStatus({ state, error }: { state: SaveState; error: string | null }) {
@@ -139,7 +154,7 @@ export function ResultView({
             </button>
           )}
           {resume.pdfUrl && (
-            <a className="btn btn--ink" href={resume.pdfUrl} download={`${slug(resume.title)}.pdf`}>
+            <a className="btn btn--ink" href={resume.pdfUrl} download={downloadName(draft, resume.title)}>
               <DownloadIcon /> Download PDF
             </a>
           )}

@@ -84,8 +84,8 @@ def kb_status() -> dict:
     """Summary for the UI: where the KB is, how many entries of each kind, last update."""
     try:
         text = load_kb()
-    except KBNotFoundError:
-        return {"path": _kb_source(), "found": False}
+    except KBNotFoundError as e:
+        return {"path": _kb_source(), "found": False, "error": str(e)}
 
     counts = {section: 0 for section in PREFIX_SECTIONS.values()}
     for prefix in ENTRY_ID.findall(text):
