@@ -1,7 +1,7 @@
 import axios from "axios";
 import { useRef, useState } from "react";
 import { resumeApi } from "../api/resumeApi";
-import type { CurrentResume, HistoryRecord, Phase, SaveState } from "../types";
+import type { CurrentResume, FitCheck, HistoryRecord, Phase, SaveState } from "../types";
 
 function base64ToBlobUrl(b64: string): string {
   const bytes = atob(b64);
@@ -63,14 +63,14 @@ export function useResume() {
 
   const cancel = () => generation.current?.abort();
 
-  const generate = async (jobDescription: string): Promise<boolean> => {
+  const generate = async (jobDescription: string, fit: FitCheck | null = null): Promise<boolean> => {
     clear();
     setError(null);
     setPhase("generating");
     const controller = new AbortController();
     generation.current = controller;
     try {
-      const r = await resumeApi.generateFromKb(jobDescription, controller.signal);
+      const r = await resumeApi.generateFromKb(jobDescription, fit, controller.signal);
       if (!r.success || !r.modified_latex) {
         setError(r.ai_error ?? "Generation failed");
         setPhase("compose");

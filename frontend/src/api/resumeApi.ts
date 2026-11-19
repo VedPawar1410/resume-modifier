@@ -1,6 +1,7 @@
 import axios from "axios";
 import type {
   CompileResponse,
+  FitCheck,
   GenerateResponse,
   HistoryListResponse,
   HistoryRecord,
@@ -78,8 +79,13 @@ export const resumeApi = {
     api.get<KBStatus>("/api/kb").then((r) => r.data),
 
   // Aborting `signal` drops the connection; the backend notices and stops the AI call.
-  generateFromKb: (job_description: string, signal?: AbortSignal): Promise<GenerateResponse> =>
-    api.post<GenerateResponse>("/api/generate-from-kb", { job_description }, { signal }).then((r) => r.data),
+  // The fit check (if one was run on this JD) is saved with the résumé.
+  generateFromKb: (job_description: string, fit_check: FitCheck | null, signal?: AbortSignal): Promise<GenerateResponse> =>
+    api.post<GenerateResponse>("/api/generate-from-kb", { job_description, fit_check }, { signal }).then((r) => r.data),
+
+  // Apply / maybe / skip before generating: free providers, a few seconds, nothing saved.
+  fitCheck: (job_description: string): Promise<FitCheck> =>
+    api.post<FitCheck>("/api/fit-check", { job_description }).then((r) => r.data),
 
   compile: (latex_code: string): Promise<CompileResponse> =>
     compileApi.post<CompileResponse>("/api/compile", { latex_code }).then((r) => r.data),

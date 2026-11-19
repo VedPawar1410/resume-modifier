@@ -1,6 +1,8 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import type { KBStatus } from "../types";
+import { resumeApi } from "../api/resumeApi";
+import type { FitCheck, KBStatus } from "../types";
+import { FitCard } from "./FitCard";
 import { AlertIcon, CheckIcon, CloseIcon, RefreshIcon, SparkIcon } from "./Icons";
 
 interface Props {
@@ -10,7 +12,7 @@ interface Props {
   onJobDescriptionChange: (v: string) => void;
   generating: boolean;
   error: string | null;
-  onGenerate: () => void;
+  onGenerate: (fit: FitCheck | null) => void;
   onCancel: () => void;
 }
 
@@ -98,6 +100,29 @@ export function ComposeView({ kb, onRefreshKb, jobDescription, onJobDescriptionC
   const counts = kb?.found ? Object.entries(kb.entries_by_section).filter(([, n]) => n > 0) : [];
   const canGenerate = !!kb?.found && !!jobDescription.trim() && !generating;
 
+  // The fit check belongs to the exact JD it was run on: edit the JD and it disappears
+  // (a stale verdict is worse than none). Kept here, not in useResume — nothing else needs it.
+  const [fit, setFit] = useState<{ jd: string; result: FitCheck } | null>(null);
+  const [fitError, setFitError] = useState<{ jd: string; message: string } | null>(null);
+  const [checking, setChecking] = useState(false);
+  const currentFit = fit?.jd === jobDescription ? fit.result : null;
+  const currentFitError = fitError?.jd === jobDescription ? fitError.message : null;
+
+  const checkFit = async () => {
+    const jd = jobDescription;
+    setChecking(true);
+    setFitError(null);
+    try {
+      setFit({ jd, result: await resumeApi.fitCheck(jd) });
+    } catch (err) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setFitError({ jd, message: detail ?? "Couldn't check the fit." });
+    } finally {
+      setChecking(false);
+    }
+  };
+  const generate = () => onGenerate(currentFit);
+
   return (
     <div className="compose">
       <motion.header
@@ -165,18 +190,39 @@ export function ComposeView({ kb, onRefreshKb, jobDescription, onJobDescriptionC
               value={jobDescription}
               onChange={(e) => onJobDescriptionChange(e.target.value)}
               onKeyDown={(e) => {
-                if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && canGenerate) onGenerate();
+                if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && canGenerate) generate();
               }}
               placeholder="Role, responsibilities, required and preferred skills…"
               spellCheck={false}
             />
             <div className="jd-card__foot">
               <span className="mono muted small">{words} words</span>
-              <button className="btn btn--ink btn--lg" onClick={onGenerate} disabled={!canGenerate}>
-                <SparkIcon /> Generate résumé <kbd>⌘↵</kbd>
-              </button>
+              <div className="jd-card__actions">
+                <button
+                  className="btn btn--ghost btn--lg"
+                  onClick={checkFit}
+                  disabled={!canGenerate || checking || !!currentFit}
+                  title="Apply / maybe / skip in a few seconds, before spending on a résumé"
+                >
+                  <CheckIcon size={15} /> {checking ? "Checking…" : "Check fit"}
+                </button>
+                <button className="btn btn--ink btn--lg" onClick={generate} disabled={!canGenerate}>
+                  <SparkIcon /> {currentFit?.verdict === "skip" ? "Generate anyway" : "Generate résumé"} <kbd>⌘↵</kbd>
+                </button>
+              </div>
             </div>
           </div>
+
+          {currentFitError && (
+            <div className="notice notice--error" role="alert">
+              <AlertIcon />
+              <div>
+                <strong>Couldn't check the fit.</strong>
+                <p>{currentFitError}</p>
+              </div>
+            </div>
+          )}
+          {currentFit && <FitCard fit={currentFit} />}
         </motion.div>
       )}
     </div>

@@ -28,6 +28,7 @@ KB_RESUME_TEMPLATE = _load_prompt("kb_resume_template.tex")
 MATCH_REPORT_SYSTEM = _load_prompt("match_report_system.txt")
 OUTREACH_SYSTEM = _load_prompt("outreach_system.txt")
 PROFILE_PARSE_SYSTEM = _load_prompt("profile_parse_system.txt")
+FIT_CHECK_SYSTEM = _load_prompt("fit_check_system.txt")
 
 GROQ_MODEL       = "openai/gpt-oss-120b"
 OPENROUTER_MODEL = "deepseek/deepseek-r1-0528-qwen3-8b:free"
@@ -94,12 +95,15 @@ async def call_ai(
     max_tokens: int | None = None,
     reasoning_effort: str | None = None,
     models: dict[str, str] | None = None,
+    max_retries: int | None = None,
 ) -> tuple[str, str]:
     """
     Try each configured provider named in `order` (default Claude → Groq → OpenRouter).
     Providers not in `order` are never tried — outreach passes ("Groq", "Gemini") so it can't
     fall through to the paid model. `max_tokens` lowers the output cap; `reasoning_effort` goes
     only to providers that accept it. `models` swaps a provider's model ({"Groq": "..."}), same key.
+    `max_retries=0` turns off the SDK's own retry, which waits out a 429 (up to ~40 s on Groq)
+    instead of moving on to the next provider.
     Returns (response text, model that produced it).
     Raises AIServiceError if every configured provider fails.
     """
@@ -115,7 +119,8 @@ async def call_ai(
     for p in chain:
         if not p.api_key:
             continue
-        client = AsyncOpenAI(api_key=p.api_key, base_url=p.base_url, default_headers=p.headers)
+        retries = {"max_retries": max_retries} if max_retries is not None else {}
+        client = AsyncOpenAI(api_key=p.api_key, base_url=p.base_url, default_headers=p.headers, **retries)
         extra = {"temperature": temperature} if p.accepts_temperature else {}
         if reasoning_effort and p.accepts_reasoning_effort:
             extra["reasoning_effort"] = reasoning_effort
@@ -289,4 +294,27 @@ async def profile_parse(user_message: str) -> tuple[str, str]:
         PROFILE_PARSE_SYSTEM, user_message, temperature=0.1,
         order=("Groq", "Gemini"), max_tokens=1024, reasoning_effort="low",
         models={"Groq": s.profile_groq_model, "Gemini": s.profile_gemini_model},
+    )
+
+
+# ── Job-fit check (before generating) ────────────────────────────────────────
+
+async def fit_check(digest: str, job_description: str) -> tuple[str, str]:
+    """
+    JD vs the compact KB digest → JSON text (parsed and scored in fit_service).
+    Free providers only, like outreach: the digest is ~3-4K tokens (the full KB never goes), so
+    prompt + a 1.5K cap stays under Groq's 8K tokens/minute; a second check inside a minute falls
+    to Gemini.
+    """
+    user_message = f"""CANDIDATE DIGEST:
+{digest}
+
+JOB DESCRIPTION:
+{job_description}
+
+Output the JSON object only."""
+    return await call_ai(
+        FIT_CHECK_SYSTEM, user_message, temperature=0.1,
+        order=("Groq", "Gemini"), max_tokens=1536, reasoning_effort="low",
+        max_retries=0,  # Ved is waiting on the screen: a Groq 429 goes straight to Gemini
     )

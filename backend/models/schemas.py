@@ -2,6 +2,8 @@ from datetime import datetime
 from pydantic import BaseModel, field_validator
 from typing import Optional
 
+from services.fit_service import FitCheck
+
 
 class HistoryRecord(BaseModel):
     id: int
@@ -53,6 +55,8 @@ class KBStatus(BaseModel):
 
 class KBGenerateRequest(BaseModel):
     job_description: str
+    # The fit check Ved ran on this JD before generating (optional), saved with the résumé.
+    fit_check: Optional[FitCheck] = None
 
     @field_validator("job_description")
     @classmethod
@@ -74,3 +78,14 @@ class KBGenerateResponse(BaseModel):
     page_count: Optional[int] = None
     model: Optional[str] = None  # Which model actually wrote it (shows if a fallback ran)
     retry_count: int = 0
+
+
+class FitCheckRequest(BaseModel):
+    job_description: str
+
+    @field_validator("job_description")
+    @classmethod
+    def jd_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("job_description must not be empty")
+        return v

@@ -25,6 +25,8 @@ class ResumeRecord(Base):
     match_report: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Outreach drafts as a JSON list (outreach_service.Draft), newest last.
     outreach: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The job-fit check (fit_service.FitCheck as JSON) run before generating, if there was one.
+    fit_check: Mapped[str | None] = mapped_column(Text, nullable=True)
     sections_modified: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     modified_latex: Mapped[str] = mapped_column(Text, nullable=False)
     pdf_bytes: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)

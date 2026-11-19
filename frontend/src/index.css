@@ -672,3 +672,61 @@ kbd {
 .outreach__count { color: var(--muted); }
 .outreach__count.is-near { color: var(--warn); }
 .outreach__count.is-over { color: var(--danger); margin: 0; }
+
+/* Job-fit check (compose screen) */
+.jd-card__actions { display: flex; align-items: center; gap: 8px; }
+.fit { padding: 20px 22px 16px; }
+.fit__head { display: flex; align-items: center; gap: 18px; }
+.fit__title { min-width: 0; }
+.fit__title .eyebrow { margin: 0 0 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fit__title h2 { margin: 0; font-size: 30px; line-height: 1.1; }
+.fit--apply .fit__title h2 { color: var(--ok); }
+.fit--maybe .fit__title h2 { color: var(--warn); }
+.fit--skip .fit__title h2 { color: var(--danger); }
+.fit__title p { margin: 4px 0 0; }
+
+.fit-ring { position: relative; width: 76px; height: 76px; flex-shrink: 0; }
+.fit-ring svg { transform: rotate(-90deg); }
+.fit-ring circle { fill: none; stroke-width: 7; }
+.fit-ring__track { stroke: rgba(26, 25, 22, 0.07); }
+.fit-ring__arc { stroke-linecap: round; }
+.fit-ring--apply .fit-ring__arc { stroke: var(--ok); }
+.fit-ring--maybe .fit-ring__arc { stroke: var(--warn); }
+.fit-ring--skip .fit-ring__arc { stroke: var(--danger); }
+.fit-ring__num {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 19px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.fit-ring__num small { font-size: 11px; color: var(--muted); margin-left: 1px; }
+.fit-ring__num { grid-auto-flow: column; justify-content: center; align-items: center; }
+
+.fit__reasons { list-style: none; margin: 16px 0 0; padding: 14px 0 0; border-top: 1px solid var(--line); display: grid; gap: 7px; }
+.fit__reason { display: flex; gap: 10px; font-size: 13.5px; line-height: 1.45; color: var(--ink-2); }
+.fit__mark {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 600;
+}
+.fit__reason--good .fit__mark { color: var(--ok); background: var(--ok-soft); }
+.fit__reason--warn .fit__mark { color: var(--warn); background: var(--warn-soft); }
+.fit__reason--bad .fit__mark { color: var(--danger); background: var(--danger-soft); }
+.fit__reason--info .fit__mark { color: var(--muted); background: rgba(26, 25, 22, 0.05); }
+.fit__foot { margin: 14px 0 0; }
+
+@media (max-width: 560px) {
+  .jd-card__foot { flex-wrap: wrap; gap: 10px; }
+  .jd-card__actions { width: 100%; }
+  .jd-card__actions .btn { flex: 1; justify-content: center; }
+  .jd-card__actions kbd { display: none; }
+}

@@ -7,7 +7,7 @@ import { LoginView } from "./components/LoginView";
 import { ResultView } from "./components/ResultView";
 import { Sidebar } from "./components/Sidebar";
 import { useResume } from "./hooks/useResume";
-import type { HistoryRecord, KBStatus } from "./types";
+import type { FitCheck, HistoryRecord, KBStatus } from "./types";
 import "./index.css";
 
 const PAGE = {
@@ -75,8 +75,8 @@ function Workspace() {
     setSidebarOpen(!open);
   };
 
-  const handleGenerate = async () => {
-    const ok = await ws.generate(jobDescription);
+  const handleGenerate = async (fit: FitCheck | null) => {
+    const ok = await ws.generate(jobDescription, fit);
     setHistoryVersion((v) => v + 1);
     if (ok) setJobDescription("");
   };

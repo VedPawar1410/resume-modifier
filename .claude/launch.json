@@ -24,6 +24,18 @@
       "runtimeExecutable": "bash",
       "runtimeArgs": ["-c", "cd frontend && VITE_API_BASE_URL=http://localhost:8001 npm run dev -- --port 5174 --strictPort"],
       "port": 5174
+    },
+    {
+      "name": "backend-alt",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd backend && export PATH=/Library/TeX/texbin:$PATH && CORS_ORIGINS=http://localhost:5175 ./venv/bin/python -m uvicorn main:app --port 8002"],
+      "port": 8002
+    },
+    {
+      "name": "frontend-alt",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd frontend && VITE_API_BASE_URL=http://localhost:8002 npm run dev -- --port 5175 --strictPort"],
+      "port": 5175
     }
   ]
 }

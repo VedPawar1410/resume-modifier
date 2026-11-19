@@ -141,15 +141,32 @@ clean. What's left for you is optional (budget alert, KB consistency session, §
        - [ ] Watch: some bullets wrap by 1-2 words (wasted line), and ML-heavy résumés can end ~10%
              short of the bottom when the KB has fewer facts for those projects.
 
-2. [ ] **Job-fit check before generating** — paste a JD, get "apply / maybe / skip" with reasons,
-       *before* spending tokens on a résumé. Saves money and time on jobs far above or off your
-       profile. To research and decide: the factors (must-have coverage from the KB, years and
-       seniority asked vs yours, location / work authorization, role type vs `roles_i_want`, red
-       flags), whether it's a cheap free-model call (like Outreach) or reuses the match-report
-       logic. **Where it lives: copy-paste, no extension needed** — a "Check fit" button next to
-       Generate on the JD you already paste; "apply" flows straight into generation. Optional later:
-       paste a *public* careers-page URL (Greenhouse, Lever, Workday…) and Sourced fetches the JD —
-       fine for public pages, but LinkedIn job pages need your login, so those stay copy-paste.
+2. [x] **Job-fit check before generating** (built 2026-11-19) — *Check fit* next to Generate on the
+       compose screen: **apply / maybe / skip**, a 0-100 fit score in a ring, and short reasons.
+       The JD stays in the box, so "apply" → Generate is one click; on "skip" the button says
+       *Generate anyway* (you decide). Editing the JD clears the verdict.
+       - **How:** code builds a ~3K-token KB digest (Profile without contact details, Targeting,
+         Headlines, skills as "name (level, N uses)", one line per entry); free Groq → Gemini reads
+         the JD against it and returns facts as JSON; **code** checks them and decides. ~4.5K input
+         + ~0.5-1.3K output tokens, **$0**, 3-8 s. `POST /api/fit-check`, `services/fit_service.py`,
+         `prompts/fit_check_system.txt`.
+       - **Rules (in `score_fit`):** your experience is fixed at **1 year** (`CANDIDATE_YEARS`).
+         Skip = 3+ years asked, a senior title (Senior/Lead/Staff/Principal/Manager/Architect/Head,
+         matched in code), or < 40% of must-haves covered. Maybe = 2 years asked, a role outside
+         `roles_i_want`, 40-70% coverage, or a screening red flag (degree, clearance…). Apply = ≥ 70
+         and none of those. Score = coverage × 70 + role 20 + years 10, capped to agree with the
+         verdict. Location never counts against a job (on-site / hybrid / remote all fine).
+       - **Kept honest:** role type is judged by meaning (Gen AI = Generative AI); a years claim or
+         red flag counts only if its quote is really in the JD; invented KB IDs downgrade a match.
+       - **Saved:** nothing for skipped JDs; when you generate after a check, the result is stored
+         with the résumé (`fit_check` column). The per-résumé Match report stays the deep audit.
+       - Tested: Eveo backend → apply 90-96, "Gen AI Engineer" (2+ yrs) → maybe 69, Ziro mentor →
+         maybe 50, a synthetic Staff ML role → skip 0-25.
+       - [ ] Watch: two checks within a minute hit Groq's 8K/min limit; the second goes to Gemini
+             (needs `GEMINI_API_KEY` on Azure — your Outreach to-do). The model only sees tags, so a
+             skill buried in a project's text may show as missing — *Generate anyway* is there.
+       - Optional later: paste a *public* careers-page URL (Greenhouse, Lever, Workday…) and Sourced
+         fetches the JD — LinkedIn job pages need your login, so those stay copy-paste.
 3. [ ] **Professional UI/UX pass** — make the whole app feel like a polished, smooth product:
        layout, typography, spacing, motion, empty/loading/error states, the side panels (editor,
        match report, outreach), and narrow-window behaviour (the result header squeezes when

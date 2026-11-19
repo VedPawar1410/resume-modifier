@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
 from models.resume_record import ResumeRecord
-from models.schemas import KBGenerateRequest, KBGenerateResponse, KBStatus
+from models.schemas import FitCheckRequest, KBGenerateRequest, KBGenerateResponse, KBStatus
 from services.ai_service import (
     AIServiceError,
     fix_document_error,
@@ -27,6 +27,7 @@ from services.kb_service import (
     load_kb,
     lost_content,
 )
+from services.fit_service import FitCheck, check_fit
 from services.latex_service import compile_latex
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,20 @@ router = APIRouter()
 @router.get("/api/kb", response_model=KBStatus)
 async def get_kb_status() -> KBStatus:
     return KBStatus(**kb_status())
+
+
+@router.post("/api/fit-check", response_model=FitCheck)
+async def fit_check(body: FitCheckRequest) -> FitCheck:
+    """Apply / maybe / skip for a JD, before spending on a résumé. Free providers, nothing saved."""
+    try:
+        kb_text = load_kb()
+    except KBNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    try:
+        return await check_fit(kb_text, body.job_description)
+    except AIServiceError as e:
+        logger.error(f"Fit check failed: {e}")
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 DISCONNECT_POLL_SECONDS = 0.5
@@ -141,6 +156,7 @@ async def _run_pipeline(request: KBGenerateRequest, db: AsyncSession) -> KBGener
             sections_modified="[]",
             modified_latex=latex,
             pdf_bytes=pdf_bytes,
+            fit_check=request.fit_check.model_dump_json() if request.fit_check else None,
         )
         db.add(record)
         await db.flush()  # assigns the id before commit expires the object

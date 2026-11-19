@@ -84,6 +84,25 @@ export interface MatchReport {
   model: string;
 }
 
+// ── Job-fit check (before generating) — mirrors backend services/fit_service.py ──
+export type FitVerdict = "apply" | "maybe" | "skip";
+
+export interface FitCheck {
+  verdict: FitVerdict;
+  score: number; // 0-100
+  summary: string;
+  job_title: string;
+  reasons: { kind: "good" | "warn" | "bad" | "info"; text: string }[];
+  requirements: {
+    skill: string;
+    importance: "must-have" | "nice-to-have";
+    status: "strong" | "weak" | "missing";
+    evidence: string[];
+  }[];
+  must_have_coverage: number;
+  model: string;
+}
+
 // ── Outreach (cold email / LinkedIn) — mirrors backend services/outreach_service.py ──
 export type OutreachKind = "email" | "connection_note" | "linkedin_message" | "referral_ask";
 export type OutreachRelationship = "recruiter" | "hiring_manager" | "engineer" | "alum" | "other";
