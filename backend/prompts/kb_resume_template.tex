@@ -1,4 +1,4 @@
-\documentclass[letterpaper,11pt]{article}
+\documentclass[letterpaper,10pt]{article}
 
 \usepackage{latexsym}
 \usepackage[empty]{fullpage}
@@ -51,8 +51,11 @@
 
 %-------------------------
 % Custom commands
+% Bullet text size: the one knob for density. 9.5pt on 11.5pt leading reads cleanly and
+% fits ~15% more than the old 11pt template's \small (10pt).
+\newcommand{\bodysize}{\fontsize{9.5pt}{11.5pt}\selectfont}
 \newcommand{\resumeItem}[1]{
-  \item\small{
+  \item\bodysize{
     {#1 \vspace{-2pt}}
   }
 }
@@ -122,15 +125,10 @@
   \resumeSubHeadingListEnd
 \vspace{-9pt}
 
-%-----------SKILLS-----------
+%-----------SKILLS (one comma-separated run, no categories)-----------
 \section{Technical Skills}
- \resumeSubHeadingListStart
- \resumeItemListStart
-    \vspace{-6pt}
-    \resumeItem{\textbf{CATEGORY:} SKILL, SKILL, SKILL}
- \resumeItemListEnd
- \resumeSubHeadingListEnd
-\vspace{-15pt}
+{\bodysize SKILL, SKILL, SKILL, SKILL, SKILL\par}
+\vspace{-6pt}
 
 %-----------EXPERIENCE-----------
 \section{Experience}
@@ -163,13 +161,5 @@
     \resumeSubHeadingListEnd
 \vspace{-2pt}
 
-%-----------CERTIFICATIONS (optional)-----------
-\section{Certifications}
- \resumeSubHeadingListStart
- \resumeItemListStart
-    \vspace{-6pt}
-    \resumeItem{\textbf{CERTIFICATION NAME} — ISSUER (Month YYYY)}
- \resumeItemListEnd
- \resumeSubHeadingListEnd
 
 \end{document}

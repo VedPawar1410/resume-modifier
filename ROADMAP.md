@@ -125,6 +125,64 @@ clean. What's left for you is optional (budget alert, KB consistency session, §
 
 ---
 
+## ⏭️ Next up for your version (noted 2026-11-18 — not started, plan each with Ved first)
+
+1. [x] **Richer projects, denser page (2026-11-19).** Diagnosis: the KB already had the depth
+       (64–105 lines per project); the prompt's one-page budget ("3-4 projects × 2-3 bullets") and
+       space spent on grouped skills, Certifications and the Google Cloud program squeezed it out.
+       - [x] `exp-google-cloud` hidden via `never_include` in the KB (training, not a job).
+       - [x] No Certifications section, ever. Skills are one comma-separated run, no categories.
+       - [x] Template: 10pt base, bullets 9.5pt on 11.5pt leading (`\bodysize` — the one knob).
+       - [x] Prompt: exactly the best 3 projects × 4-5 end-to-end bullets (build → hard part →
+             measured result → tested/deployed), relevant experience 4-6 bullets, fill the page,
+             never pad. Trim pass keeps all 3 projects and the single skills run.
+       - Result: Eveo AI went from Experience 4/1/1 + Projects 3/3/3 to **5/2 + 4/5/4**; Ziro
+         **4/2 + 4/4/4**. Both one page, 0 repairs, no Google Cloud/Certifications.
+       - [ ] Watch: some bullets wrap by 1-2 words (wasted line), and ML-heavy résumés can end ~10%
+             short of the bottom when the KB has fewer facts for those projects.
+
+2. [ ] **Job-fit check before generating** — paste a JD, get "apply / maybe / skip" with reasons,
+       *before* spending tokens on a résumé. Saves money and time on jobs far above or off your
+       profile. To research and decide: the factors (must-have coverage from the KB, years and
+       seniority asked vs yours, location / work authorization, role type vs `roles_i_want`, red
+       flags), whether it's a cheap free-model call (like Outreach) or reuses the match-report
+       logic. **Where it lives: copy-paste, no extension needed** — a "Check fit" button next to
+       Generate on the JD you already paste; "apply" flows straight into generation. Optional later:
+       paste a *public* careers-page URL (Greenhouse, Lever, Workday…) and Sourced fetches the JD —
+       fine for public pages, but LinkedIn job pages need your login, so those stay copy-paste.
+3. [ ] **Professional UI/UX pass** — make the whole app feel like a polished, smooth product:
+       layout, typography, spacing, motion, empty/loading/error states, the side panels (editor,
+       match report, outreach), and narrow-window behaviour (the result header squeezes when
+       the sidebar and a side panel are both open in a narrow window).
+4. [ ] **Application Q&A** (Ved's idea, 2026-11-18) — application portals often ask extra questions
+       ("Why this company?", "Describe a project where…", "Your experience with X?"). Recruiters call
+       these *screening* or *supplemental* questions. A tab on each résumé, next to Outreach: paste a
+       question, get an answer you can copy straight into the portal.
+       - Grounded like everything else: answers come from the JD, this résumé and the KB (the full
+         entries for the projects a question is about, not only the résumé bullets). No invented
+         facts; if the KB has nothing, it says so instead of making something up.
+       - Per question: an optional word/character limit (portals often cap answers), a tone
+         (short factual vs a fuller story, e.g. STAR for "describe a time…"), and regenerate/edit/copy.
+       - Saved with the résumé like Outreach drafts, so similar questions later can reuse them.
+       - Likely free providers (Groq → Gemini), reusing the Outreach plumbing — decide when planning.
+       - Covers yes/no and short fields too (notice period, relocation, work authorization) from the
+         KB's Profile/Targeting. A cover letter could live here later.
+       - Research when planning: common question types, and length/format conventions.
+5. [ ] **Outreach: fill the form from a LinkedIn profile** (Ved's idea, 2026-11-18). Two ways to fill
+       the recipient fields: type them (today), or **paste the profile**. Open the person's LinkedIn
+       profile in your own browser, select all and copy, paste into Sourced, and the AI pulls out
+       name, current role and company, the relationship (recruiter / hiring manager / engineer /
+       alum — e.g. "Talent Partner" → recruiter), shared school, and one or two true hooks (recent
+       post, past company) for the Notes. Free providers; nothing saved but the draft.
+       - **Not scraping, deliberately:** having Sourced fetch a profile URL with your logged-in
+         LinkedIn session breaks LinkedIn's User Agreement (no bots, scripts or plugins that scrape),
+         risks restricting your account (Premium included), and would mean storing your LinkedIn
+         session cookie on the server. LinkedIn's official API doesn't give other people's profiles.
+       - Later, maybe: a one-click browser extension that sends the profile page you're viewing.
+         Still against LinkedIn's terms (they name browser plugins), so only if we accept that risk.
+
+---
+
 ## 🅱️ Track B — the product for everyone (after Track A)
 
 1. [ ] **Name: Sourced** (chosen 2026-11-18). Done: app brand, page title, API title, image name
