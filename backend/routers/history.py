@@ -24,9 +24,13 @@ from services.outreach_service import (
     DraftUpdate,
     OutreachRequest,
     OutreachState,
+    ProfileParse,
+    ProfileParseRequest,
     dump_drafts,
     generate_draft,
     load_drafts,
+    parse_profile,
+    split_title,
     who_to_contact,
 )
 
@@ -241,6 +245,25 @@ async def create_outreach(
     record.outreach = dump_drafts([*load_drafts(record.outreach), draft])
     await db.commit()
     return draft
+
+
+@router.post("/{record_id}/outreach/parse-profile", response_model=ProfileParse)
+async def parse_outreach_profile(
+    record_id: int, req: ProfileParseRequest, db: AsyncSession = Depends(get_db),
+) -> ProfileParse:
+    """
+    A pasted LinkedIn profile → the recipient fields (free providers). Nothing is saved: the
+    paste is used for this one call; only what Ved later puts in a draft is stored.
+    """
+    record = await _get_record(db, record_id)
+    company, _role = split_title(extract_title(record.modified_latex) or record.label)
+    try:
+        return await parse_profile(req.profile_text, company, _load_kb_or_503())
+    except AIServiceError as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"The free AI providers are busy or failed — try again in a minute.\n{e}",
+        )
 
 
 @router.patch("/{record_id}/outreach/{draft_id}", response_model=Draft)

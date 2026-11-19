@@ -9,6 +9,7 @@ import type {
   OutreachDraft,
   OutreachRequest,
   OutreachState,
+  ProfileParse,
   SaveLatexResponse,
 } from "../types";
 
@@ -115,6 +116,11 @@ export const resumeApi = {
 
   deleteOutreach: (id: number, draftId: string): Promise<void> =>
     api.delete(`/api/history/${id}/outreach/${draftId}`).then(() => undefined),
+
+  // Paste a LinkedIn profile (copied by Ved from his own browser) → recipient fields. Not saved.
+  parseProfile: (id: number, profileText: string): Promise<ProfileParse> =>
+    api.post<ProfileParse>(`/api/history/${id}/outreach/parse-profile`, { profile_text: profileText })
+      .then((r) => r.data),
 
   deleteHistory: (id: number): Promise<void> =>
     api.delete(`/api/history/${id}`).then(() => undefined),

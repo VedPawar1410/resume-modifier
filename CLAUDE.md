@@ -82,6 +82,9 @@ so it decompresses streams with zlib to read `/Count`.
   `% title:` line, no AI) + saved drafts; `POST` writes one message (`services/outreach_service.py`,
   prompt `prompts/outreach_system.txt`, JD + résumé + KB Profile/Targeting only); `PATCH`/`DELETE`
   one draft. Drafts live as a JSON list in the `outreach` column.
+  `POST /api/history/{id}/outreach/parse-profile` reads a pasted LinkedIn profile into the recipient
+  fields (code trims the page chrome, `profile_parse()` on its own smaller models, code checks school
+  and company). Nothing stored. Prompt edits need a backend restart (`--reload` watches only `.py`).
 
 ### Frontend state flow
 
@@ -110,6 +113,7 @@ PDF is returned as base64 from the API; the frontend converts it to a blob URL v
 | `GROQ_API_KEY` | No | Fallback AI provider |
 | `OPENROUTER_API_KEY` | No | Second fallback AI provider |
 | `GEMINI_API_KEY`, `GEMINI_MODEL` | For outreach | Free Gemini (after Groq) for outreach messages; model default `gemini-3.5-flash` (override when Google retires it — a 404) |
+| `PROFILE_GROQ_MODEL`, `PROFILE_GEMINI_MODEL` | No | Models for reading a pasted profile (default `openai/gpt-oss-20b`, `gemini-3.5-flash-lite`) — their own rate-limit buckets |
 | `KB_GITHUB_REPO`, `GITHUB_TOKEN` | Deployed | Read kb.md from the private repo via the GitHub API (60 s cache) instead of `KB_PATH` |
 | `DATABASE_URL` | Deployed | Neon Postgres (converted for asyncpg in `database.py`); unset = local SQLite |
 | `APP_PASSWORD`, `AUTH_SECRET` | Deployed | Password gate (`routers/auth.py`); unset = no gate |

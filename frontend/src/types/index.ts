@@ -117,3 +117,13 @@ export interface OutreachState {
   guide: OutreachGuide;
   drafts: OutreachDraft[];
 }
+
+// A pasted LinkedIn profile → the recipient fields. Nothing about the person is stored.
+export interface ProfileParse {
+  recipient_name: string;
+  recipient_role: string;
+  relationship: OutreachRelationship;
+  notes: string;
+  warning: string;
+  model: string;
+}

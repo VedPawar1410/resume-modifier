@@ -27,6 +27,7 @@ KB_GENERATE_SYSTEM = _load_prompt("kb_generate_system.txt")
 KB_RESUME_TEMPLATE = _load_prompt("kb_resume_template.tex")
 MATCH_REPORT_SYSTEM = _load_prompt("match_report_system.txt")
 OUTREACH_SYSTEM = _load_prompt("outreach_system.txt")
+PROFILE_PARSE_SYSTEM = _load_prompt("profile_parse_system.txt")
 
 GROQ_MODEL       = "openai/gpt-oss-120b"
 OPENROUTER_MODEL = "deepseek/deepseek-r1-0528-qwen3-8b:free"
@@ -92,12 +93,13 @@ async def call_ai(
     order: tuple[str, ...] = DEFAULT_ORDER,
     max_tokens: int | None = None,
     reasoning_effort: str | None = None,
+    models: dict[str, str] | None = None,
 ) -> tuple[str, str]:
     """
     Try each configured provider named in `order` (default Claude → Groq → OpenRouter).
     Providers not in `order` are never tried — outreach passes ("Groq", "Gemini") so it can't
     fall through to the paid model. `max_tokens` lowers the output cap; `reasoning_effort` goes
-    only to providers that accept it.
+    only to providers that accept it. `models` swaps a provider's model ({"Groq": "..."}), same key.
     Returns (response text, model that produced it).
     Raises AIServiceError if every configured provider fails.
     """
@@ -108,6 +110,7 @@ async def call_ai(
     errors: list[str] = []
     by_name = {p.name: p for p in _providers()}
     chain = [by_name[name] for name in order if name in by_name]
+    chain = [p._replace(model=models[p.name]) if models and p.name in models else p for p in chain]
 
     for p in chain:
         if not p.api_key:
@@ -271,4 +274,19 @@ async def outreach_message(user_message: str) -> tuple[str, str]:
     return await call_ai(
         OUTREACH_SYSTEM, user_message, temperature=0.5,
         order=("Groq", "Gemini"), max_tokens=2048, reasoning_effort="low",
+    )
+
+
+async def profile_parse(user_message: str) -> tuple[str, str]:
+    """
+    A pasted LinkedIn profile → JSON text {"recipient_name", ...} (parsed in outreach_service).
+    Free providers only, on smaller models than outreach drafts: rate limits are per model, so a
+    paste and a draft in the same minute don't eat each other's budget. The trimmed paste is
+    ~1-2K tokens; a 1K cap leaves room for the 20B model's short reasoning.
+    """
+    s = get_settings()
+    return await call_ai(
+        PROFILE_PARSE_SYSTEM, user_message, temperature=0.1,
+        order=("Groq", "Gemini"), max_tokens=1024, reasoning_effort="low",
+        models={"Groq": s.profile_groq_model, "Gemini": s.profile_gemini_model},
     )

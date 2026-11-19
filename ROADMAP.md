@@ -168,7 +168,7 @@ clean. What's left for you is optional (budget alert, KB consistency session, §
        - Covers yes/no and short fields too (notice period, relocation, work authorization) from the
          KB's Profile/Targeting. A cover letter could live here later.
        - Research when planning: common question types, and length/format conventions.
-5. [ ] **Outreach: fill the form from a LinkedIn profile** (Ved's idea, 2026-11-18). Two ways to fill
+5. [x] **Outreach: fill the form from a LinkedIn profile** (Ved's idea, 2026-11-18; built 2026-11-19). Two ways to fill
        the recipient fields: type them (today), or **paste the profile**. Open the person's LinkedIn
        profile in your own browser, select all and copy, paste into Sourced, and the AI pulls out
        name, current role and company, the relationship (recruiter / hiring manager / engineer /
@@ -180,6 +180,22 @@ clean. What's left for you is optional (budget alert, KB consistency session, §
          session cookie on the server. LinkedIn's official API doesn't give other people's profiles.
        - Later, maybe: a one-click browser extension that sends the profile page you're viewing.
          Still against LinkedIn's terms (they name browser plugins), so only if we accept that risk.
+       - **Built:** Outreach → *Recipient: Type it · Paste a LinkedIn profile*.
+         `POST /api/history/{id}/outreach/parse-profile`. Code trims LinkedIn's menus, buttons,
+         repeated lines and the "People also viewed" sidebar (~8K-character cap), one free AI call
+         reads name / current role / relationship / 1-2 hooks, then code checks the facts: your KB
+         school in the paste → `alum` + "Also studied at …"; target company missing → a warning.
+         Nothing is stored; only lengths are logged. ~800 input tokens per paste.
+       - **Own rate-limit bucket, no second account:** free-tier limits are per model, so parsing uses
+         `openai/gpt-oss-20b` → `gemini-3.5-flash-lite` (`PROFILE_GROQ_MODEL` / `PROFILE_GEMINI_MODEL`)
+         while drafts stay on gpt-oss-120b → Flash. A second Groq account would break Groq's AI policy
+         (it bans multiple accounts to exceed limits), and extra keys in one account share a bucket.
+       - **DevTools copy considered, rejected:** outerHTML is 10-30× the tokens (hashed class names
+         that change each deploy), the page is server-driven UI so the Network JSON describes widgets,
+         and a console `copy(main.innerText)` is the same grey area as an extension. ⌘A ⌘C + trimming
+         gets the same facts.
+       - [ ] Try it on a few real profiles (recruiter, manager, alum) and tune the trim lists if noise
+             gets through. LinkedIn's "More → Save to PDF" upload is a possible later input.
 
 ---
 

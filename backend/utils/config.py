@@ -12,6 +12,11 @@ class Settings(BaseSettings):
     # Free Gemini key (aistudio.google.com) — outreach messages only, after Groq.
     gemini_api_key: str = ""
     gemini_model: str = "gemini-3.5-flash"  # 2.5 is retired for new keys (404)
+    # Reading a pasted LinkedIn profile is a small extraction job, so it uses smaller models.
+    # Free-tier rate limits are counted per model, so these get their own buckets and never
+    # compete with outreach drafts (gpt-oss-120b / gemini_model) in the same minute.
+    profile_groq_model: str = "openai/gpt-oss-20b"
+    profile_gemini_model: str = "gemini-3.5-flash-lite"
 
     # Primary model for resume generation (Claude, via Anthropic's OpenAI-compatible
     # endpoint). Groq and OpenRouter are fallbacks.

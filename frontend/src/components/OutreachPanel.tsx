@@ -1,7 +1,9 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { resumeApi } from "../api/resumeApi";
-import type { OutreachDraft, OutreachKind, OutreachRelationship, OutreachRequest, OutreachState } from "../types";
+import type {
+  OutreachDraft, OutreachKind, OutreachRelationship, OutreachRequest, OutreachState, ProfileParse,
+} from "../types";
 import { AlertIcon, CheckIcon, CloseIcon, MailIcon, TrashIcon } from "./Icons";
 
 interface Props {
@@ -48,6 +50,11 @@ export function OutreachPanel({ recordId, onClose }: Props) {
     position: "",
     notes: "",
   });
+  // Two ways to fill the recipient: type it, or paste their LinkedIn profile and let the AI read it.
+  const [fillMode, setFillMode] = useState<"type" | "paste">("type");
+  const [pasted, setPasted] = useState("");
+  const [parsing, setParsing] = useState(false);
+  const [filled, setFilled] = useState<ProfileParse | null>(null);
 
   // Guide + saved drafts. Instant: the guide is built from the résumé title, no AI.
   useEffect(() => {
@@ -72,6 +79,28 @@ export function OutreachPanel({ recordId, onClose }: Props) {
       .then((d) => setState((s) => (s ? { ...s, drafts: [...s.drafts, d] } : s)))
       .catch((err) => setError(errorText(err, "Couldn't write the message.")))
       .finally(() => setGenerating(false));
+  };
+
+  const fillFromProfile = () => {
+    setParsing(true);
+    setError(null);
+    resumeApi
+      .parseProfile(recordId, pasted)
+      .then((p) => {
+        setForm((f) => ({
+          ...f,
+          recipient_name: p.recipient_name,
+          recipient_role: p.recipient_role,
+          relationship: p.relationship,
+          // Keep anything already typed in Notes; the hooks go underneath.
+          notes: [f.notes.trim(), p.notes].filter(Boolean).join("\n").slice(0, 1000),
+        }));
+        setFilled(p);
+        setPasted(""); // don't keep someone's profile around once it's been read
+        setFillMode("type"); // back to the normal form, every field editable
+      })
+      .catch((err) => setError(errorText(err, "Couldn't read the profile.")))
+      .finally(() => setParsing(false));
   };
 
   const replaceDraft = (d: OutreachDraft) =>
@@ -151,6 +180,51 @@ export function OutreachPanel({ recordId, onClose }: Props) {
                   </button>
                 ))}
               </div>
+              <div className="outreach__fill" role="radiogroup" aria-label="How to fill in the recipient">
+                <span className="field-label">Recipient</span>
+                {(["type", "paste"] as const).map((m) => (
+                  <button
+                    key={m}
+                    role="radio"
+                    aria-checked={fillMode === m}
+                    className={`btn btn--ghost btn--sm ${fillMode === m ? "is-on" : ""}`}
+                    onClick={() => setFillMode(m)}
+                  >
+                    {m === "type" ? "Type it" : "Paste a LinkedIn profile"}
+                  </button>
+                ))}
+              </div>
+
+              {fillMode === "paste" ? (
+                <div className="outreach__paste">
+                  <textarea
+                    className="outreach__input outreach__paste-box"
+                    value={pasted}
+                    maxLength={100000}
+                    onChange={(e) => setPasted(e.target.value)}
+                    placeholder="Open their LinkedIn profile in your browser, press ⌘A then ⌘C, and paste it here."
+                    aria-label="Pasted LinkedIn profile"
+                    autoFocus
+                  />
+                  <button className="btn btn--ink" onClick={fillFromProfile}
+                    disabled={parsing || pasted.trim().length < 20}>
+                    {parsing ? <><span className="spinner-dot" /> Reading…</> : "Fill from profile"}
+                  </button>
+                  <p className="muted small outreach__sub">
+                    Free (Groq, then Gemini). The paste is read once and not saved — only a draft you write is.
+                  </p>
+                </div>
+              ) : (
+              <>
+              {filled && (
+                <div className={`notice ${filled.warning ? "notice--warn" : "outreach__filled"}`} role="status">
+                  {filled.warning ? <AlertIcon /> : <CheckIcon />}
+                  <div>
+                    <p>Filled from the profile — check before writing.</p>
+                    {filled.warning && <p>{filled.warning}</p>}
+                  </div>
+                </div>
+              )}
               <div className="outreach__grid">
                 <label>
                   <span className="field-label">Their name</span>
@@ -185,6 +259,8 @@ export function OutreachPanel({ recordId, onClose }: Props) {
                 {generating ? <><span className="spinner-dot" /> Writing…</> : <><MailIcon /> Generate</>}
               </button>
               <p className="muted small outreach__sub">Free (Groq, then Gemini). Saved with this résumé.</p>
+              </>
+              )}
             </div>
 
             {drafts.length > 0 && (

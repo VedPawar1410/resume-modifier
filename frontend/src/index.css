@@ -656,6 +656,11 @@ kbd {
 }
 .outreach__input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .outreach__notes { min-height: 64px; resize: vertical; }
+.outreach__fill { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.outreach__fill .field-label { margin: 0 4px 0 0; }
+.outreach__paste { display: flex; flex-direction: column; gap: 10px; }
+.outreach__paste-box { min-height: 160px; resize: vertical; font-size: 13px; }
+.outreach__filled { background: var(--accent-soft); color: var(--accent); }
 .outreach .btn--ink { align-self: flex-start; }
 .outreach__draft { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .outreach__draft-head { display: flex; align-items: center; gap: 8px; }

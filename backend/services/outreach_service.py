@@ -16,9 +16,9 @@ from datetime import datetime, timezone
 from typing import Literal
 from urllib.parse import quote_plus
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
-from services.ai_service import AIServiceError, outreach_message
+from services.ai_service import AIServiceError, outreach_message, profile_parse
 from services.match_service import _body_only, _parse
 
 logger = logging.getLogger(__name__)
@@ -201,4 +201,118 @@ async def generate_draft(req: OutreachRequest, kb_text: str, job_description: st
         body=ai.body.strip(),
         model=model,
         warning=warning,
+    )
+
+
+# ── Paste a LinkedIn profile → recipient fields ──────────────────────────────
+# Ved copies a profile he is viewing (⌘A ⌘C) and pastes it. Sourced never fetches LinkedIn.
+# Code trims LinkedIn's menus first (cheap, predictable, keeps the prompt inside Groq's 8K
+# tokens/min), the model does the judgment calls (name, current role, relationship, hooks),
+# then code checks the plain facts (shared school, works at the company). Nothing is stored.
+
+PROFILE_INPUT_MAX = 100_000  # a whole ⌘A copy is usually 5-25K characters
+PROFILE_TRIM_MAX = 8_000     # ≈ 2K tokens; name, headline, highlights and experience come first
+
+# The page's sidebar and footer start here; everything after is other people or LinkedIn chrome.
+_TAIL_MARKERS = (
+    "People also viewed", "More profiles for you", "People you may know", "You might like",
+    "Explore Premium profiles", "Explore collaborative articles", "LinkedIn Corporation ©",
+)
+# Whole lines that are menus or buttons, compared lowercased.
+_UI_LINES = {
+    "skip to main content", "home", "my network", "jobs", "messaging", "notifications", "me",
+    "for business", "learning", "try premium for free", "try premium", "reactivate premium",
+    "connect", "message", "more", "follow", "following", "pending", "show all", "see more",
+    "…see more", "...see more", "show more", "show less", "like", "comment", "repost", "send",
+    "contact info", "view my services", "open to", "add profile section", "enhance profile",
+    "resources", "save to pdf", "about this profile", "report / block", "·", "•",
+}
+_NOISE = re.compile(r"^(\d+\+?|\d+ notifications?|· (1st|2nd|3rd\+?)|(1st|2nd|3rd\+?) degree connection)$", re.I)
+_COMPANY_SUFFIX = re.compile(r"[,\s]+(inc\.?|llc|ltd\.?|limited|pvt\.?|private|corp\.?|corporation|gmbh|co\.?)$", re.I)
+
+
+class ProfileParseRequest(BaseModel):
+    profile_text: str = Field(..., min_length=20, max_length=PROFILE_INPUT_MAX)
+
+
+class ProfileParse(BaseModel):
+    recipient_name: str = ""
+    recipient_role: str = ""
+    relationship: Relationship = "other"
+    notes: str = ""
+    warning: str = ""
+    model: str = ""
+
+
+class _AIProfile(BaseModel):
+    recipient_name: str = ""
+    recipient_role: str = ""
+    relationship: str = "other"
+    notes: str = ""
+
+    @field_validator("relationship")
+    @classmethod
+    def _known(cls, v: str) -> str:  # an unexpected label shouldn't cost a retry
+        return v if v in ("recruiter", "hiring_manager", "engineer") else "other"
+
+
+def trim_profile(text: str) -> str:
+    """Drop LinkedIn's menus, buttons, repeated lines and the sidebar; cap the length."""
+    lines: list[str] = []
+    for raw in text.splitlines():
+        line = " ".join(raw.split())
+        if not line:
+            continue
+        if line.startswith(_TAIL_MARKERS):
+            break
+        if line.lower() in _UI_LINES or _NOISE.match(line):
+            continue
+        if lines and lines[-1] == line:  # LinkedIn repeats titles for screen readers
+            continue
+        lines.append(line)
+    return "\n".join(lines)[:PROFILE_TRIM_MAX]
+
+
+def _mentions(text: str, name: str) -> bool:
+    core = _COMPANY_SUFFIX.sub("", name.strip())
+    return bool(core) and core.lower() in text.lower()
+
+
+async def parse_profile(profile_text: str, company: str, kb_text: str) -> ProfileParse:
+    trimmed = trim_profile(profile_text)
+    # Lengths only, never the text: it's someone else's profile.
+    logger.info(f"Profile paste trimmed {len(profile_text)} → {len(trimmed)} characters")
+    message = f"TARGET COMPANY: {company or '(unknown)'}\n\nPROFILE:\n{trimmed}\n\nOutput the JSON object only."
+
+    ai, model, last_error = None, "", ""
+    for _attempt in range(2):
+        text, model = await profile_parse(message)
+        try:
+            ai = _AIProfile.model_validate(_parse(text))
+            break
+        except (json.JSONDecodeError, ValidationError, AttributeError) as e:
+            last_error = str(e)[:300]
+            logger.warning(f"Profile JSON didn't validate, retrying: {last_error}")
+    if ai is None:
+        raise AIServiceError(f"The profile came back malformed twice: {last_error}")
+
+    # Plain facts are checked in code, not trusted to the model.
+    relationship, hooks = ai.relationship, [h.strip() for h in ai.notes.splitlines() if h.strip()]
+    school = _school(kb_text)
+    if school and _mentions(trimmed, school):
+        hooks = [h for h in hooks if not _mentions(h, school)]  # one school hook, not two
+        hooks.append(f"Also studied at {school}.")
+        if relationship in ("engineer", "other"):  # a recruiter or manager keeps their tone
+            relationship = "alum"
+    warning = ""
+    if company and not _mentions(trimmed, company):
+        warning = f"Couldn't see {company} on this profile — check they still work there."
+
+    return ProfileParse(
+        recipient_name=ai.recipient_name.strip()[:100],
+        recipient_role=ai.recipient_role.strip()[:150],
+        relationship=relationship,
+        notes="\n".join(hooks[:3])[:1000],
+        warning=warning,
+        model=model,
     )
