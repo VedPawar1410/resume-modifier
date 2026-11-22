@@ -6,6 +6,7 @@ import { LoginView } from "./components/LoginView";
 import { CommandPalette } from "./components/shell/CommandPalette";
 import { JobsPane } from "./components/shell/JobsPane";
 import { Rail } from "./components/shell/Rail";
+import { Toaster } from "./components/Toast";
 import { useGeneration } from "./hooks/useGeneration";
 import { useJobs } from "./hooks/useJobs";
 import { jobPath, navigate, useRoute } from "./hooks/useRoute";
@@ -146,13 +147,14 @@ function Workspace() {
               <JobsPane jobs={jobsApi.jobs} activeId={null} generatingId={generation.running?.jobId ?? null} page />
             )}
             {route.name === "job" && (
-              <JobPage id={route.id} step={route.step} jobsApi={jobsApi} generation={generation} version={versions[route.id] ?? 0} />
+              <JobPage id={route.id} step={route.step} jobsApi={jobsApi} generation={generation} version={versions[route.id] ?? 0} kbCount={kb?.entry_count} />
             )}
             {route.name === "kb" && <KBPage kb={kb} onRefresh={loadKb} />}
           </motion.div>
         </AnimatePresence>
       </main>
 
+      <Toaster />
       <CommandPalette open={palette} onClose={() => setPalette(false)} jobs={jobsApi.jobs} route={route} />
     </div>
   );

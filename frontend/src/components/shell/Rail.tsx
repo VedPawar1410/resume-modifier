@@ -2,6 +2,7 @@ import type { Route } from "../../hooks/useRoute";
 import { navigate } from "../../hooks/useRoute";
 import { BookIcon, CommandIcon, ListIcon, PlusIcon } from "../Icons";
 import { ThemeToggle } from "../ThemeToggle";
+import { Tooltip } from "../Tooltip";
 
 interface Props {
   route: Route;
@@ -20,23 +21,24 @@ export function Rail({ route, paneOpen, onTogglePane, onPalette }: Props) {
         <span className="rail__mark" aria-hidden="true">S</span>
       </button>
       <div className="rail__group">
-        <RailButton label="New job" active={route.name === "home"} onClick={() => navigate("/")}>
+        <RailButton label="New job" tip="Paste a job description — check the fit or generate a résumé" active={route.name === "home"} onClick={() => navigate("/")}>
           <PlusIcon size={18} />
         </RailButton>
         <RailButton
           label="Jobs"
+          tip="Every job you've checked, with its fit and status"
           active={jobsOn}
           className="rail__jobs"
           onClick={() => (window.innerWidth < 720 ? navigate("/jobs") : onTogglePane())}
         >
           <ListIcon size={18} />
         </RailButton>
-        <RailButton label="Knowledge base" active={route.name === "kb"} onClick={() => navigate("/kb")}>
+        <RailButton label="Knowledge base" tip="What your résumés are built from — entries and health" active={route.name === "kb"} onClick={() => navigate("/kb")}>
           <BookIcon size={18} />
         </RailButton>
       </div>
       <div className="rail__group rail__bottom">
-        <RailButton label="Command palette (⌘K)" onClick={onPalette} className="rail__palette">
+        <RailButton label="Command palette (⌘K)" tip="Jump to any job or step from the keyboard" onClick={onPalette} className="rail__palette">
           <CommandIcon size={17} />
         </RailButton>
         <ThemeToggle className="rail__btn" />
@@ -47,27 +49,30 @@ export function Rail({ route, paneOpen, onTogglePane, onPalette }: Props) {
 
 function RailButton({
   label,
+  tip,
   active = false,
   className = "",
   onClick,
   children,
 }: {
   label: string;
+  tip: string;
   active?: boolean;
   className?: string;
   onClick: () => void;
   children: React.ReactNode;
 }) {
   return (
-    <button
-      className={`rail__btn ${active ? "is-active" : ""} ${className}`}
-      onClick={onClick}
-      aria-label={label}
-      aria-current={active ? "page" : undefined}
-      title={label}
-    >
-      {children}
-      <span className="rail__label" aria-hidden="true">{label.split(" (")[0]}</span>
-    </button>
+    <Tooltip side="right" content={<><strong className="tip__title">{label}</strong><span>{tip}</span></>}>
+      <button
+        className={`rail__btn ${active ? "is-active" : ""} ${className}`}
+        onClick={onClick}
+        aria-label={label}
+        aria-current={active ? "page" : undefined}
+      >
+        {children}
+        <span className="rail__label" aria-hidden="true">{label.split(" (")[0]}</span>
+      </button>
+    </Tooltip>
   );
 }

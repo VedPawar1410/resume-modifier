@@ -48,3 +48,5 @@ export const DocIcon = (p: IconProps) => <Svg {...p}><path d="M7 3.5h7l4 4V20a.5
 export const CommandIcon = (p: IconProps) => (
   <Svg {...p}><path d="M9 9V6.5A2.5 2.5 0 1 0 6.5 9H9zm0 0v6m0-6h6m-6 6H6.5A2.5 2.5 0 1 0 9 17.5V15zm0 0h6m0-6V6.5A2.5 2.5 0 1 1 17.5 9H15zm0 0v6m0 0h2.5a2.5 2.5 0 1 1-2.5 2.5V15z" /></Svg>
 );
+export const ExpandIcon = (p: IconProps) => <Svg {...p}><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" /></Svg>;
+export const ArrowRightIcon = (p: IconProps) => <Svg {...p}><path d="M5 12h14M13 6l6 6-6 6" /></Svg>;

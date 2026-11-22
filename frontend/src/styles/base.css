@@ -230,3 +230,67 @@ select.outreach__input { appearance: auto; }
 .login__input { height: 44px; font-size: 15px; }
 .login__submit { margin-top: 16px; justify-content: center; }
 
+
+/* ── Tooltip: inverted ink, a small arrow, fixed so nothing clips it ───────── */
+.tip-anchor { display: inline-flex; }
+.tip {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 300px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 12.5px;
+  font-weight: 400;
+  line-height: 1.45;
+  text-align: left;
+  white-space: normal;
+  pointer-events: none;
+  box-shadow: 0 10px 30px -12px var(--scrim);
+  animation: tip-in 0.12s var(--ease);
+}
+.tip--bottom { transform: translateX(-50%); }
+.tip--top { transform: translate(-50%, -100%); }
+.tip--right { transform: translateY(-50%); }
+.tip::before { content: ""; position: absolute; width: 8px; height: 8px; background: inherit; transform: rotate(45deg); }
+.tip--bottom::before { top: -4px; left: calc(50% + var(--arrow, 0px) - 4px); }
+.tip--top::before { bottom: -4px; left: calc(50% + var(--arrow, 0px) - 4px); }
+.tip--right::before { left: -4px; top: calc(50% - 4px); }
+.tip__title { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
+.tip__title kbd { opacity: 0.7; }
+.tip__meta { font-family: var(--font-mono); font-size: 11px; opacity: 0.78; }
+.tip__list { display: flex; flex-direction: column; gap: 2px; font-size: 11.5px; }
+@keyframes tip-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── Toast: bottom-centre, one at a time ───────────────────────────────────── */
+.toaster { position: fixed; left: 50%; bottom: 24px; z-index: 70; transform: translateX(-50%); pointer-events: none; }
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px 10px 16px;
+  border-radius: var(--r-pill);
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 13.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: 0 12px 32px -12px var(--scrim);
+  pointer-events: auto;
+}
+.toast__action {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid currentColor;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.toast__action:hover { background: var(--bg); color: var(--ink); }
+@media (max-width: 720px) { .toaster { bottom: 76px; } } /* above the phone tab bar */
