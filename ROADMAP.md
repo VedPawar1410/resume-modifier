@@ -2,14 +2,15 @@
 
 One place for everything planned, so nothing gets lost in long chats. Tick items as they're done
 (`[x]`), strike ones we drop (`~~like this~~`), and add new ones at the bottom of their section.
-Last updated: 2026-11-18.
+Last updated: 2026-11-23.
 
 **Your live version is protected:** only `main` deploys (Azure + Vercel production). All Track B work
 happens on branches and pull requests, which get their own Vercel preview links and never touch
 production. A branch merges into `main` only when you say so.
 
 **Order from here:**
-1. *Now:* apply for jobs with the live app. Use the match report on applications that matter.
+1. *Now:* apply for jobs with the live app (Sourced v2 is live since 2026-11-23). Use the match
+   report on applications that matter.
 2. *Soon, with you (~1 session):* **KB consistency session** (For Ved) — clears the wording conflicts.
 3. *Track B, on branches, in this order:* landing page (§2) → in-app KB builder (§3) → accounts (§4)
    → usage limits (§6) → per-job controls (§5) → insights page (§7); v2 pipeline (§1b) when the
@@ -244,21 +245,38 @@ clean. What's left for you is optional (budget alert, KB consistency session, §
        - [ ] Try it on a few real profiles (recruiter, manager, alum) and tune the trim lists if noise
              gets through. LinkedIn's "More → Save to PDF" upload is a possible later input.
 
-5. [ ] **Sourced v2 — job-centred UI** (built 2026-11-22 on branch `redesign/jobs`, not merged).
+6. [x] **Sourced v2 — job-centred UI** (built 2026-11-22, **merged to `main` 2026-11-23**, PR #1).
        The app is organised around **jobs**: every fit-checked JD is saved as a job, and Fit →
        Résumé → Match → Outreach → Q&A are its steps (`/jobs/:id/:step`). Icon rail + jobs pane
        (search, Apply/Maybe/Skip and status filters) + content; Home is the composer + recent jobs;
        ⌘K palette; Knowledge-base page (section bars + health); phones get a bottom tab bar.
-       - **API (additive, works with the old frontend):** fit check saves a job (`modified_latex ""`
-         = no résumé yet; same JD reuses it), generate takes `record_id` and fills that job,
-         `status` column (applied/interviewing/offer/rejected), `GET /api/history/{id}`, list items
-         carry `status / has_resume / fit_verdict / fit_score`, steps 409 until a résumé exists.
-         First backend tests: `backend/tests/test_jobs.py` (pytest, in `requirements-dev.txt`).
-       - The fit step now shows the requirements table the check always returned. Match / Outreach /
-         Q&A get a readable column with the résumé docked beside it at ≥1280px.
+       - **API (additive):** fit check saves a job (`modified_latex ""` = no résumé yet; same JD
+         reuses it), generate takes `record_id` and fills that job, `status` column
+         (applied/interviewing/offer/rejected), `GET /api/history/{id}` (now also `has_match_report`,
+         `outreach_count`, `qa_count`), list items carry `status / has_resume / fit_verdict /
+         fit_score`, steps 409 until a résumé exists. Tests: `backend/tests/test_jobs.py` — run with
+         `python -m pytest tests` from `backend/` (plain `pytest` can't import the app).
        - `frontend/vercel.json` adds the SPA rewrite so job URLs survive a refresh.
-       - [ ] **You:** look at it locally, then say merge. Ship order: backend first (it's additive),
-             then the frontend. A Vercel preview needs its URL in `CORS_ORIGINS`.
+       - **Polish pass (2026-11-23), after Ved used it:**
+         - **Match report is opt-in + cancellable:** opening the tab only `GET`s the saved report
+           (free, 404 if none); an intro card shows cost/time and a *Run* button; a live timer +
+           *Cancel* drops the request and the backend cancels the AI task (same disconnect watch as
+           generate), nothing saved; Re-run confirms first.
+         - **Outreach & Q&A:** intro strip (what it is + 3 steps), compose | results side by side
+           when the panel is ≥860px wide (container query), one type scale, segmented controls,
+           who-to-contact as a card grid, a greyed example where results will appear, named buttons
+           (*Write email*, *Answer question*).
+         - **Generating card:** fixed size (960px, two columns: progress | "while you wait" with the
+           fit check's must-haves and the KB entry count); the quote box has a set height.
+         - **Résumé dock:** draggable / arrow-key divider (30–70%, default half, remembered),
+           *Expand* to 90vw×90vh (Esc closes), *Hide* folds to an edge tab; docks from 1100px.
+         - **Help everywhere:** tooltips on step tabs (what · cost · time · state), score, status,
+           KB-entries chip and rail icons; keys 1–5 switch steps; tab counts (Q&A · 3); "Next: …"
+           nudges; toasts with Undo for status; locked/empty steps preview "what you'll get"; Fit puts
+           the requirements beside the verdict on wide screens; a dismissable first-visit hint.
+       - [ ] Watch: at 1100px with the jobs pane open, a 50/50 dock is tight (~400px a side) — drag it.
+       - [ ] Not checked: the loader *on a job page* with must-have chips (needs a paid generation;
+             same component as on Home, which was checked).
 
 ---
 
