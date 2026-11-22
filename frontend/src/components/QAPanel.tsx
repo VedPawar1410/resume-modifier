@@ -1,12 +1,15 @@
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { resumeApi } from "../api/resumeApi";
 import type { QAAnswer, QAKind, QARequest, QASimilar, QAState, QAUnit } from "../types";
 import { AlertIcon, ChatIcon, CheckIcon, CloseIcon, RefreshIcon, TrashIcon } from "./Icons";
+import { PanelIntro } from "./PanelIntro";
+import { toast } from "../utils/toast";
 
 interface Props {
   recordId: number;
   onClose?: () => void; // omitted when shown as a job step (steps don't close)
+  onCount?: (n: number) => void; // answers saved (the step tab shows "Q&A · 3")
 }
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -37,12 +40,13 @@ function useCopy() {
   const copy = (key: string, text: string) =>
     navigator.clipboard.writeText(text).then(() => {
       setCopied(key);
+      toast("Answer copied");
       setTimeout(() => setCopied(null), 1500);
     });
   return { copied, copy };
 }
 
-export function QAPanel({ recordId, onClose }: Props) {
+export function QAPanel({ recordId, onClose, onCount }: Props) {
   const [state, setState] = useState<QAState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +73,16 @@ export function QAPanel({ recordId, onClose }: Props) {
     return () => clearTimeout(t);
   }, [form.question, recordId]);
   const shownSimilar = form.question.trim().length < 15 ? [] : similar;
+
+  // Tell the job page how many answers there are, whenever that changes.
+  const countRef = useRef(onCount);
+  useEffect(() => {
+    countRef.current = onCount;
+  });
+  const answerCount = state?.answers.length;
+  useEffect(() => {
+    if (answerCount !== undefined) countRef.current?.(answerCount);
+  }, [answerCount]);
 
   const set = <K extends keyof QARequest>(key: K, value: QARequest[K]) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -110,7 +124,10 @@ export function QAPanel({ recordId, onClose }: Props) {
   const removeAnswer = (id: string) =>
     resumeApi
       .deleteQA(recordId, id)
-      .then(() => setState((s) => (s ? { ...s, answers: s.answers.filter((x) => x.id !== id) } : s)))
+      .then(() => {
+        setState((s) => (s ? { ...s, answers: s.answers.filter((x) => x.id !== id) } : s));
+        toast("Answer deleted");
+      })
       .catch((err) => setError(errorText(err, "Couldn't delete the answer.")));
 
   const answers = state ? [...state.answers].reverse() : []; // newest first
@@ -153,127 +170,158 @@ export function QAPanel({ recordId, onClose }: Props) {
 
         {state && (
           <>
-            <div className="outreach__section">
-              <h3 className="outreach__h"><span className="muted">01 ·</span> Answer a question</h3>
-              <p className="muted small outreach__sub">
-                Paste a screening or supplemental question from the portal. Answers use only the job
-                description, this résumé and your KB — if the KB doesn't have it, it says so.
-              </p>
-              <textarea
-                className="outreach__input qa__question"
-                value={form.question}
-                maxLength={2000}
-                onChange={(e) => set("question", e.target.value)}
-                placeholder="e.g. Describe a project where you used LLMs in production. What was the hardest part?"
-                aria-label="Question"
-                autoFocus
-              />
+            <PanelIntro
+              lead="Answers for the application portal's screening questions, from this job's résumé and your KB — it says so when a fact is missing."
+              steps={["Paste the question", "Set a limit (optional)", "Copy the answer"]}
+              meta="Free · Groq / Gemini · saved with this job"
+            />
 
-              {shownSimilar.length > 0 && (
-                <div className="qa__similar" role="status">
-                  <p className="small"><strong>You answered something similar</strong></p>
-                  {shownSimilar.map((s) => (
-                    <div key={`${s.record_id}-${s.answer.id}`} className="qa__similar-item">
-                      <p className="small qa__similar-q">{s.answer.question}</p>
-                      <p className="muted small">
-                        {s.record_id === recordId ? "This résumé" : s.resume_title} · {words(s.answer.answer)} words
-                      </p>
-                      <p className="small qa__similar-a">{s.answer.answer}</p>
-                      <button className="btn btn--ghost btn--sm" onClick={() => copy(`sim-${s.answer.id}`, s.answer.answer)}>
-                        {copied === `sim-${s.answer.id}` ? <><CheckIcon size={13} /> Copied</> : "Copy this answer"}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="outreach__kinds" role="radiogroup" aria-label="Question type">
-                {KINDS.map((k) => (
-                  <button
-                    key={k.kind}
-                    role="radio"
-                    aria-checked={form.kind === k.kind}
-                    title={k.hint}
-                    className={`btn btn--ghost btn--sm ${form.kind === k.kind ? "is-on" : ""}`}
-                    onClick={() => set("kind", k.kind)}
-                  >
-                    {k.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="outreach__grid">
-                <label>
-                  <span className="field-label">Limit (optional)</span>
-                  <div className="qa__limit">
-                    <input
-                      className="outreach__input"
-                      type="number"
-                      min={1}
-                      max={10000}
-                      value={form.limit ?? ""}
-                      onChange={(e) => set("limit", e.target.value ? Math.max(1, Number(e.target.value)) : null)}
-                      placeholder="None"
-                    />
-                    <select className="outreach__input" value={form.unit}
-                      onChange={(e) => set("unit", e.target.value as QAUnit)} aria-label="Limit unit">
-                      <option value="words">words</option>
-                      <option value="characters">characters</option>
-                    </select>
-                  </div>
-                </label>
-                <label>
-                  <span className="field-label">About which project</span>
-                  <select
-                    className="outreach__input"
-                    value={form.entry_ids[0] ?? ""}
-                    onChange={(e) => set("entry_ids", e.target.value ? [e.target.value] : [])}
-                  >
-                    <option value="">Pick for me</option>
-                    <optgroup label="On this résumé">
-                      {onResume.map((e) => <option key={e.id} value={e.id}>{e.title}</option>)}
-                    </optgroup>
-                    <optgroup label="Rest of your KB">
-                      {others.map((e) => <option key={e.id} value={e.id}>{e.title}</option>)}
-                    </optgroup>
-                  </select>
-                </label>
-              </div>
-
-              <label>
-                <span className="field-label">Notes (optional)</span>
-                <textarea
-                  className="outreach__input outreach__notes"
-                  value={form.notes}
-                  maxLength={1000}
-                  onChange={(e) => set("notes", e.target.value)}
-                  placeholder="Facts the KB doesn't have, taken as true: notice period, why you like this company…"
-                />
-              </label>
-
-              <button className="btn btn--ink" onClick={generate} disabled={generating || form.question.trim().length < 3}>
-                {generating ? <><span className="spinner-dot" /> Writing…</> : <><ChatIcon /> Answer</>}
-              </button>
-              <p className="muted small outreach__sub">Free (Groq or Gemini), a few seconds. Saved with this résumé.</p>
-            </div>
-
-            {answers.length > 0 && (
-              <div className="outreach__section">
-                <h3 className="outreach__h"><span className="muted">02 ·</span> Answers <span className="muted">· {answers.length}</span></h3>
-                {answers.map((a) => (
-                  <AnswerCard
-                    key={a.id}
-                    recordId={recordId}
-                    answer={a}
-                    titleOf={titleOf}
-                    busy={generating}
-                    onSaved={replaceAnswer}
-                    onRegenerate={() => regenerate(a)}
-                    onDelete={() => removeAnswer(a.id)}
+            <div className="workspace">
+              <section className="workspace__compose outreach__section">
+                <h3 className="outreach__h"><span>01 ·</span> Answer a question</h3>
+                <label className="field">
+                  <span className="field-label">Question from the portal</span>
+                  <textarea
+                    className="outreach__input qa__question"
+                    value={form.question}
+                    maxLength={2000}
+                    onChange={(e) => set("question", e.target.value)}
+                    placeholder="e.g. Describe a project where you used LLMs in production. What was the hardest part?"
+                    autoFocus
                   />
-                ))}
-              </div>
-            )}
+                </label>
+
+                {shownSimilar.length > 0 && (
+                  <div className="qa__similar" role="status">
+                    <p className="result-title">You answered something similar</p>
+                    {shownSimilar.map((s) => (
+                      <div key={`${s.record_id}-${s.answer.id}`} className="qa__similar-item">
+                        <p className="qa__similar-q">{s.answer.question}</p>
+                        <p className="help">
+                          {s.record_id === recordId ? "This résumé" : s.resume_title} · {words(s.answer.answer)} words
+                        </p>
+                        <p className="qa__similar-a">{s.answer.answer}</p>
+                        <button className="btn btn--ghost btn--sm" onClick={() => copy(`sim-${s.answer.id}`, s.answer.answer)}>
+                          {copied === `sim-${s.answer.id}` ? <><CheckIcon size={13} /> Copied</> : "Copy this answer"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="field">
+                  <span className="field-label" id="qa-kind-label">Type</span>
+                  <div className="segmented" role="radiogroup" aria-labelledby="qa-kind-label">
+                    {KINDS.map((k) => (
+                      <button
+                        key={k.kind}
+                        role="radio"
+                        aria-checked={form.kind === k.kind}
+                        className={form.kind === k.kind ? "is-on" : ""}
+                        onClick={() => set("kind", k.kind)}
+                      >
+                        {k.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="help">{KINDS.find((k) => k.kind === form.kind)?.hint}</p>
+                </div>
+
+                <div className="outreach__grid">
+                  <div className="field">
+                    <span className="field-label" id="qa-limit-label">Limit <span className="field-label__opt">optional</span></span>
+                    <div className="qa__limit" role="group" aria-labelledby="qa-limit-label">
+                      <input
+                        className="outreach__input"
+                        type="number"
+                        min={1}
+                        max={10000}
+                        value={form.limit ?? ""}
+                        onChange={(e) => set("limit", e.target.value ? Math.max(1, Number(e.target.value)) : null)}
+                        placeholder="None"
+                        aria-label="Limit"
+                      />
+                      <select className="outreach__input" value={form.unit}
+                        onChange={(e) => set("unit", e.target.value as QAUnit)} aria-label="Limit unit">
+                        <option value="words">words</option>
+                        <option value="characters">characters</option>
+                      </select>
+                    </div>
+                  </div>
+                  <label className="field">
+                    <span className="field-label">About which project</span>
+                    <select
+                      className="outreach__input"
+                      value={form.entry_ids[0] ?? ""}
+                      onChange={(e) => set("entry_ids", e.target.value ? [e.target.value] : [])}
+                    >
+                      <option value="">Pick for me</option>
+                      <optgroup label="On this résumé">
+                        {onResume.map((e) => <option key={e.id} value={e.id}>{e.title}</option>)}
+                      </optgroup>
+                      <optgroup label="Rest of your KB">
+                        {others.map((e) => <option key={e.id} value={e.id}>{e.title}</option>)}
+                      </optgroup>
+                    </select>
+                  </label>
+                </div>
+
+                <label className="field">
+                  <span className="field-label">Notes <span className="field-label__opt">optional</span></span>
+                  <textarea
+                    className="outreach__input outreach__notes"
+                    value={form.notes}
+                    maxLength={1000}
+                    onChange={(e) => set("notes", e.target.value)}
+                    placeholder="Facts the KB doesn't have, taken as true: notice period, why you like this company…"
+                  />
+                </label>
+
+                <div className="actions">
+                  <button className="btn btn--ink btn--lg" onClick={generate} disabled={generating || form.question.trim().length < 3}>
+                    {generating ? <><span className="spinner-dot" /> Writing…</> : <><ChatIcon /> Answer question</>}
+                  </button>
+                  <span className="help">A few seconds. It appears under Answers.</span>
+                </div>
+              </section>
+
+              <section className="workspace__results" aria-label="Answers">
+                <h3 className="outreach__h"><span>02 ·</span> Answers {answers.length > 0 && <span>· {answers.length}</span>}</h3>
+                {answers.length === 0 ? (
+                  <div className="example">
+                    <p className="example__note">Your answers appear here, newest first — with a word count against the limit, ready to copy.</p>
+                    <div className="outreach__draft example__card" aria-hidden="true">
+                      <div className="outreach__draft-head">
+                        <span className="chip">Story</span>
+                        <span className="result-title">Describe a project where you used LLMs in production.</span>
+                      </div>
+                      <div className="example__line" />
+                      <div className="example__line" />
+                      <div className="example__line" />
+                      <div className="example__line example__line--short" />
+                      <div className="outreach__draft-foot">
+                        <span className="outreach__count">186 words · limit 200 words</span>
+                        <span className="outreach__model" />
+                        <span className="btn btn--ghost btn--sm">Copy</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  answers.map((a) => (
+                    <AnswerCard
+                      key={a.id}
+                      recordId={recordId}
+                      answer={a}
+                      titleOf={titleOf}
+                      busy={generating}
+                      onSaved={replaceAnswer}
+                      onRegenerate={() => regenerate(a)}
+                      onDelete={() => removeAnswer(a.id)}
+                    />
+                  ))
+                )}
+              </section>
+            </div>
           </>
         )}
       </div>
@@ -312,7 +360,7 @@ function AnswerCard({ recordId, answer, titleOf, busy, onSaved, onRegenerate, on
     <article className="outreach__draft">
       <div className="outreach__draft-head">
         <span className="chip">{KIND_LABEL[answer.kind]}</span>
-        <span className="small outreach__to qa__q" title={answer.question}>{answer.question}</span>
+        <span className="result-title qa__q" title={answer.question}>{answer.question}</span>
         <button className="icon-btn icon-btn--sm" onClick={onDelete} aria-label="Delete answer" title="Delete answer">
           <TrashIcon size={14} />
         </button>
@@ -336,7 +384,7 @@ function AnswerCard({ recordId, answer, titleOf, busy, onSaved, onRegenerate, on
       />
 
       <div className="outreach__draft-foot">
-        <span className={`small outreach__count ${over ? "is-over" : near ? "is-near" : ""}`}>
+        <span className={`outreach__count ${over ? "is-over" : near ? "is-near" : ""}`}>
           {words(text)} words · {text.length} chars
           {answer.limit != null && ` · limit ${answer.limit} ${answer.unit}`}
         </span>

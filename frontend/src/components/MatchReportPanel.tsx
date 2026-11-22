@@ -145,9 +145,9 @@ export function MatchReportPanel({ recordId, onClose, onReady }: Props) {
             <p className="eyebrow">Not run yet</p>
             <h3 className="intro-card__title">See exactly how this résumé covers the job.</h3>
             <ul className="intro-card__list">
-              <li><span className="dot" aria-hidden="true" />Every requirement in the job description, sorted into <strong>on your résumé</strong>, <strong>in your KB but left out</strong>, <strong>weak</strong> and <strong>missing</strong>.</li>
-              <li><span className="dot" aria-hidden="true" />How many must-haves the résumé shows.</li>
-              <li><span className="dot" aria-hidden="true" />What to swap in with the editor, in plain words.</li>
+              <li><span className="dot" aria-hidden="true" /><span>Every requirement in the job description, sorted into <strong>on your résumé</strong>, <strong>in your KB but left out</strong>, <strong>weak</strong> and <strong>missing</strong>.</span></li>
+              <li><span className="dot" aria-hidden="true" /><span>How many must-haves the résumé shows.</span></li>
+              <li><span className="dot" aria-hidden="true" /><span>What to swap in with the editor, in plain words.</span></li>
             </ul>
             <div className="intro-card__actions">
               <button className="btn btn--ink btn--lg" onClick={() => run(false)}>
