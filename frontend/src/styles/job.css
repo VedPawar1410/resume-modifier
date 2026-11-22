@@ -2,7 +2,14 @@
 
 /* ── Home ─────────────────────────────────────────────────────────────────── */
 .home { max-width: 820px; margin: 0 auto; padding: clamp(40px, 10vh, 104px) 32px 72px; }
+.home--wide { max-width: 1040px; }
 .home__intro { margin-bottom: 28px; }
+.hint { display: flex; align-items: flex-start; gap: 12px; padding: 12px 12px 12px 16px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--accent-soft); }
+.hint p { flex: 1; margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--ink-2); }
+.hint strong { color: var(--ink); font-weight: 600; }
+.hint__dot { width: 7px; height: 7px; margin-top: 7px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+.score-btn { padding: 0; border: 0; background: none; border-radius: 10px; cursor: pointer; }
+.score-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .home__kb { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin-bottom: 18px; }
 .home__kb .icon-btn { margin: -6px 0; }
 .home__body { display: flex; flex-direction: column; gap: 14px; }
@@ -156,6 +163,8 @@
 .step-tab.is-active { color: var(--ink); border-bottom-color: var(--accent); }
 .step-tab.is-locked { opacity: 0.5; }
 .step-tab__num { font-size: 11px; color: var(--faint); }
+.steps-bar > .tip-anchor { flex-shrink: 0; }
+.step-tab__count { font-size: 11.5px; color: var(--ok); }
 .step-tab__done { display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; color: var(--ok); background: var(--ok-soft); }
 
 .job__body { flex: 1; min-height: 0; overflow-y: auto; }
@@ -168,7 +177,14 @@
 .empty p { margin: 0; }
 .empty .btn { margin-top: 8px; }
 
-/* Fit step */
+/* Fit step: verdict beside the requirements when there's room */
+.job__body--fit { container: fitstep / inline-size; }
+@container fitstep (min-width: 1000px) {
+  .step-narrow--fit { max-width: 1320px; }
+  .fit-step { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: start; }
+  .fit-step .verdict__top { grid-template-columns: minmax(0, 1fr); gap: 14px; } /* score above the words in a half-width column */
+  .fit-step .req { margin-top: 0; }
+}
 .next-action { display: flex; flex-wrap: wrap; gap: 10px; margin: 24px 0 0; }
 .req { margin-top: 36px; overflow-x: auto; }
 .table { width: 100%; margin-top: 10px; border-collapse: collapse; font-size: 14px; }
@@ -204,21 +220,76 @@
   .resume-step.is-editing .editor-pane { border-left: 0; border-top: 1px solid var(--line); }
 }
 
-/* Match / Outreach / Q&A: a readable column, the résumé docked beside it on wide screens */
-.docked { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
-.docked__main { min-width: 0; min-height: 0; overflow-y: auto; container: step / inline-size; }
-.docked__main .editor-pane { max-width: 820px; min-height: 100%; margin: 0 auto; border-left: 0; background: transparent; }
-.docked__main .editor-pane__head { position: sticky; top: 0; z-index: 2; background: var(--bg); padding-left: 28px; padding-right: 20px; }
-.docked__main .match__body { overflow: visible; padding: 24px 28px 64px; }
-.docked__sheet { display: none; }
-@media (min-width: 1280px) {
-  .docked.is-docked { grid-template-columns: minmax(0, 1fr) clamp(380px, 36%, 560px); }
-  .docked__sheet { display: flex; flex-direction: column; min-height: 0; border-left: 1px solid var(--line); background: var(--bg-raised); }
-  .docked__sheet .sheet { margin: 0 16px 16px; }
-  .docked:not(.is-docked) .docked__sheet { position: absolute; top: 8px; right: 16px; z-index: 3; border: 0; background: none; }
-  .docked:not(.is-docked) .docked__bar .eyebrow { display: none; }
+/* Match / Outreach / Q&A beside the résumé: a resizable split (DockSplit) */
+.dock { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
+.dock__main { min-width: 0; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; container: step / inline-size; }
+.dock__main > .editor-pane { width: 100%; max-width: 1080px; margin: 0 auto; flex: 0 0 auto; border-left: 0; background: transparent; }
+.dock.is-docked .dock__main > .editor-pane { max-width: none; }
+.dock__main .editor-pane__head { position: sticky; top: 0; z-index: 2; background: var(--bg); padding-left: 28px; padding-right: 20px; }
+.dock__main .match__body { overflow: visible; padding: 24px 28px 28px; }
+.dock:not(.is-docked) .dock__main .match__body { padding-right: 44px; } /* room for the edge tab */
+.dock__main > .nudge { width: 100%; max-width: 1080px; margin: auto auto 0; padding: 0 28px 28px; }
+.dock.is-docked .dock__main > .nudge { max-width: none; }
+.dock__sheet { display: flex; flex-direction: column; min-height: 0; min-width: 0; background: var(--bg-raised); }
+.dock__sheet .sheet { margin: 0 16px 16px; }
+@media (min-width: 1100px) {
+  .dock.is-docked { grid-template-columns: minmax(0, 1fr) 10px minmax(0, var(--sheet)); }
 }
-.docked__bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 16px; }
+.dock__divider { position: relative; background: var(--bg-raised); border-left: 1px solid var(--line); cursor: col-resize; touch-action: none; outline: none; }
+.dock__grip { position: absolute; top: 50%; left: 50%; width: 4px; height: 40px; border-radius: 2px; background: var(--line-strong); transform: translate(-50%, -50%); transition: background 0.15s, height 0.15s var(--ease); }
+.dock__divider:hover .dock__grip, .dock__divider:focus-visible .dock__grip, .dock.is-dragging .dock__grip { height: 72px; background: var(--accent); }
+.dock__divider:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+.dock.is-dragging { cursor: col-resize; user-select: none; }
+.dock.is-dragging embed { pointer-events: none; } /* the PDF would swallow the drag */
+.dock__bar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; }
+.dock__bar .eyebrow { flex: 1; }
+.dock__pct { font-size: 11px; color: var(--faint); }
+.dock__tab {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 7px;
+  border: 1px solid var(--line-strong);
+  border-right: 0;
+  border-radius: 10px 0 0 10px;
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-weight: 500;
+  writing-mode: vertical-rl;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+.dock__tab:hover { background: var(--surface-2); color: var(--ink); }
+.dock__tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* The résumé, large */
+.overlay { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: var(--scrim); }
+.overlay__panel { display: flex; flex-direction: column; width: 90vw; height: 90vh; border: 1px solid var(--line-strong); border-radius: var(--r-lg); background: var(--bg-raised); box-shadow: var(--shadow-sheet); overflow: hidden; }
+.overlay__bar { display: flex; align-items: center; gap: 12px; padding: 10px 14px 10px 20px; }
+.overlay__bar .eyebrow { flex: 1; }
+.overlay__panel .sheet { margin: 0 14px 14px; }
+
+/* "Next: Match report →" at the end of a finished step */
+.nudge { display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 13px; }
+.nudge__key { display: grid; place-items: center; width: 20px; height: 20px; border: 1px solid var(--line-strong); border-radius: 5px; font-size: 11px; color: var(--faint); }
+.resume-step__bar .nudge { margin-left: 4px; }
+
+/* Empty and locked steps: a centred card that previews what the step gives you */
+.step-center { flex: 1; min-height: 0; overflow-y: auto; display: grid; place-items: center; padding: 32px 28px; container: gen / inline-size; }
+.step-fill { min-height: 100%; display: flex; flex-direction: column; }
+.preview-card { display: flex; flex-direction: column; gap: 10px; width: min(640px, 100%); padding: 32px 34px; border-radius: var(--r-lg); }
+.preview-card p { margin: 0; }
+.preview-card__title { margin: 0; font-size: 28px; line-height: 1.15; letter-spacing: -0.03em; }
+.preview-card__label { margin-top: 10px !important; }
+.preview-card__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.preview-card__list li { display: flex; align-items: center; gap: 10px; font-size: 14.5px; color: var(--ink-2); }
+.preview-card__list svg { flex-shrink: 0; color: var(--ok); }
+.preview-card__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 12px; }
 
 /* ── KB page ──────────────────────────────────────────────────────────────── */
 .kb-page { max-width: 760px; margin: 0 auto; padding: clamp(36px, 8vh, 80px) 28px 72px; }
@@ -250,6 +321,12 @@
   .steps-bar { margin: 0 16px; }
   .step-tab__num { display: none; }
   .step-narrow { padding: 20px 16px 48px; }
+  .step-center { padding: 20px 16px; place-items: start center; }
+  .preview-card { padding: 24px 20px; }
+  .preview-card__title { font-size: 24px; }
+  .dock__main .editor-pane__head, .dock__main .match__body { padding-left: 16px; padding-right: 16px; }
+  .dock:not(.is-docked) .dock__main .match__body { padding-right: 36px; }
+  .dock__main > .nudge { padding: 0 16px 20px; }
   .resume-step__bar, .resume-step .desk { padding-left: 16px; padding-right: 16px; }
   .btn__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .bar { grid-template-columns: 96px minmax(0, 1fr) 36px; }

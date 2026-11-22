@@ -1,9 +1,11 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { resumeApi } from "../api/resumeApi";
-import { AlertIcon, ChatIcon, CheckIcon, DocIcon, DotsIcon, DownloadIcon, MailIcon, SparkIcon } from "../components/Icons";
+import { AlertIcon, ArrowRightIcon, ChatIcon, CheckIcon, DocIcon, DotsIcon, DownloadIcon, MailIcon, SparkIcon } from "../components/Icons";
+import { DockSplit } from "../components/job/DockSplit";
+import { Tooltip } from "../components/Tooltip";
 import { FitStep } from "../components/job/FitStep";
-import { ResumeStep, Sheet } from "../components/job/ResumeStep";
+import { ResumeStep } from "../components/job/ResumeStep";
 import { ScoreBadge } from "../components/job/badges";
 import { MatchReportPanel } from "../components/MatchReportPanel";
 import { OutreachPanel } from "../components/OutreachPanel";
@@ -13,22 +15,62 @@ import { errorMessage } from "../hooks/useGeneration";
 import { useJobResume } from "../hooks/useJobResume";
 import type { JobsApi } from "../hooks/useJobs";
 import type { Step } from "../hooks/useRoute";
-import { jobPath, navigate } from "../hooks/useRoute";
+import { STEPS, jobPath, navigate } from "../hooks/useRoute";
 import type { JobDetail, JobStatus } from "../types";
 import { JOB_STATUSES } from "../types";
-import { splitLabel } from "../utils/jobs";
+import { splitLabel, statusLabel } from "../utils/jobs";
+import { toast } from "../utils/toast";
 import { parseDate } from "../utils/dates";
 import { downloadName } from "../utils/download";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-const STEP_META: { id: Step; label: string; Icon: (p: { size?: number }) => React.ReactElement }[] = [
-  { id: "fit", label: "Fit", Icon: CheckIcon },
-  { id: "resume", label: "Résumé", Icon: DocIcon },
-  { id: "match", label: "Match", Icon: SparkIcon },
-  { id: "outreach", label: "Outreach", Icon: MailIcon },
-  { id: "qa", label: "Q&A", Icon: ChatIcon },
+// What each step does, what it costs and how long it takes — shown in the tab tooltips, and as
+// the "what you'll get" list when a step is locked.
+const STEP_META: {
+  id: Step;
+  label: string;
+  Icon: (p: { size?: number }) => React.ReactElement;
+  tip: string;
+  cost: string;
+  gets: string[];
+}[] = [
+  {
+    id: "fit", label: "Fit", Icon: CheckIcon,
+    tip: "Reads the job against your knowledge base: apply / maybe / skip, a 0–100 score and every requirement it found.",
+    cost: "Free · a few seconds",
+    gets: ["Apply / maybe / skip, with a score", "Every requirement, matched to your KB", "Why — in plain words"],
+  },
+  {
+    id: "resume", label: "Résumé", Icon: DocIcon,
+    tip: "Writes a one-page résumé for this job from your knowledge base — nothing invented. Edit the LaTeX after if you like.",
+    cost: "Claude · 25–40 seconds",
+    gets: ["A one-page PDF tailored to this job", "Only facts from your KB", "A LaTeX editor with live preview"],
+  },
+  {
+    id: "match", label: "Match", Icon: SparkIcon,
+    tip: "Every requirement in the JD, sorted into on your résumé / in your KB but left out / weak / missing — with what to change.",
+    cost: "~1¢ · under a minute, then saved",
+    gets: ["Every JD requirement in 4 buckets", "How many must-haves the résumé shows", "What to swap in with the editor"],
+  },
+  {
+    id: "outreach", label: "Outreach", Icon: MailIcon,
+    tip: "Who to contact at the company, then a cold email, connection note, InMail or referral ask written from this résumé.",
+    cost: "Free · a few seconds each",
+    gets: ["Search links for recruiters, managers and alumni", "A message in the right length and tone", "Drafts saved with this job"],
+  },
+  {
+    id: "qa", label: "Q&A", Icon: ChatIcon,
+    tip: "Paste a screening question from the application portal and get an answer grounded in this résumé and your KB.",
+    cost: "Free · a few seconds each",
+    gets: ["Answers that fit the portal's word limit", "Only facts from your KB — it says when one's missing", "Earlier similar answers, one click to reuse"],
+  },
 ];
+
+const isTyping = (el: EventTarget | null) => {
+  const t = el as HTMLElement | null;
+  return !!t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || !!t.closest?.(".cm-editor"));
+};
 
 interface Props {
   id: number;
@@ -36,9 +78,10 @@ interface Props {
   jobsApi: JobsApi;
   generation: GenerationApi;
   version: number; // bumps when a new résumé lands for this job
+  kbCount?: number;
 }
 
-export function JobPage({ id, step, jobsApi, generation, version }: Props) {
+export function JobPage({ id, step, jobsApi, generation, version, kbCount }: Props) {
   const [job, setJob] = useState<JobDetail | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
@@ -60,6 +103,21 @@ export function JobPage({ id, step, jobsApi, generation, version }: Props) {
   const current = job && job.id === id ? { ...job, ...(listed ?? {}) } : null;
   const hasResume = current?.has_resume ?? listed?.has_resume ?? false;
   const resume = useJobResume(id, hasResume, version);
+
+  // Counts that change while you're here (a report saved, a draft written) — the job's own
+  // counts are the starting point.
+  const [live, setLive] = useState<{ match?: boolean; outreach?: number; qa?: number }>({});
+
+  // 1–5 jump between steps (not while typing, and not with a modifier — ⌘1 is the browser's).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented || isTyping(e.target)) return;
+      const n = Number(e.key);
+      if (n >= 1 && n <= STEPS.length) navigate(jobPath(id, STEPS[n - 1]), { replace: true });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [id]);
 
   const run = generation.running?.jobId === id ? generation.running : null;
   const genError = generation.error?.jobId === id ? generation.error.message : null;
@@ -98,12 +156,49 @@ export function JobPage({ id, step, jobsApi, generation, version }: Props) {
     }
   };
 
+  const counts = {
+    outreach: live.outreach ?? current.outreach_count ?? 0,
+    qa: live.qa ?? current.qa_count ?? 0,
+  };
   const done: Record<Step, boolean> = {
     fit: !!current.fit_check,
     resume: hasResume,
-    match: false,
-    outreach: false,
-    qa: false,
+    match: live.match ?? !!current.has_match_report,
+    outreach: counts.outreach > 0,
+    qa: counts.qa > 0,
+  };
+  const go = (s: Step) => navigate(jobPath(id, s), { replace: true });
+
+  const setStatus = (s: JobStatus | null) => {
+    const before = current.status ?? null;
+    if (s === before) return;
+    jobsApi.setStatus(id, s);
+    toast(`Status: ${statusLabel(s) ?? "Not applied"}`, { label: "Undo", run: () => jobsApi.setStatus(id, before) });
+  };
+
+  // "Next: …" at the bottom of a finished step, following Fit → Résumé → Match → Outreach → Q&A.
+  const nudge = (from: Step) => {
+    if (!done[from]) return null;
+    if (from === "qa") {
+      if (current.status) return null;
+      return (
+        <div className="nudge">
+          <span className="muted">Sent the application?</span>
+          <button className="btn btn--ghost btn--sm" onClick={() => setStatus("applied")}>Mark as applied</button>
+        </div>
+      );
+    }
+    const next = STEPS[STEPS.indexOf(from) + 1];
+    const meta = STEP_META.find((m) => m.id === next)!;
+    return (
+      <div className="nudge">
+        <span className="muted">Next</span>
+        <button className="btn btn--ghost btn--sm" onClick={() => go(next)}>
+          {meta.label === "Match" ? "Match report" : meta.label} <ArrowRightIcon size={13} />
+        </button>
+        <span className="mono nudge__key" aria-hidden="true">{STEPS.indexOf(next) + 1}</span>
+      </div>
+    );
   };
   const locked = (s: Step) => !hasResume && (s === "match" || s === "outreach" || s === "qa");
 
@@ -114,33 +209,55 @@ export function JobPage({ id, step, jobsApi, generation, version }: Props) {
         pdfUrl={resume.pdfUrl}
         latex={resume.latex}
         onRename={(label) => jobsApi.rename(id, label).then(() => setJob((j) => (j ? { ...j, label } : j)))}
-        onStatus={(s) => jobsApi.setStatus(id, s)}
+        onStatus={setStatus}
         onDelete={async () => {
           await jobsApi.remove(id);
+          toast("Job deleted");
           navigate("/", { replace: true });
         }}
       />
 
       <nav className="steps-bar" aria-label="Steps for this job">
-        {STEP_META.map((s, i) => (
-          <a
-            key={s.id}
-            href={jobPath(id, s.id)}
-            className={`step-tab ${active === s.id ? "is-active" : ""} ${locked(s.id) ? "is-locked" : ""}`}
-            aria-current={active === s.id ? "step" : undefined}
-            onClick={(e) => {
-              if (e.metaKey || e.ctrlKey) return;
-              e.preventDefault();
-              navigate(jobPath(id, s.id), { replace: true });
-            }}
-          >
-            <span className="step-tab__num mono">{String(i + 1).padStart(2, "0")}</span>
-            <s.Icon size={14} />
-            <span>{s.label}</span>
-            {done[s.id] && <span className="step-tab__done" aria-label="done"><CheckIcon size={12} /></span>}
-            {s.id === "resume" && run && <span className="spinner-dot" aria-label="writing" />}
-          </a>
-        ))}
+        {STEP_META.map((s, i) => {
+          const count = s.id === "outreach" ? counts.outreach : s.id === "qa" ? counts.qa : 0;
+          const state = locked(s.id)
+            ? "Generate the résumé first."
+            : s.id === "resume" && run
+              ? "Writing now…"
+              : done[s.id]
+                ? count ? `${count} saved.` : "Done."
+                : "Not started.";
+          return (
+            <Tooltip
+              key={s.id}
+              content={
+                <>
+                  <strong className="tip__title">{s.label} <kbd>{i + 1}</kbd></strong>
+                  <span>{s.tip}</span>
+                  <span className="tip__meta">{s.cost} · {state}</span>
+                </>
+              }
+            >
+              <a
+                href={jobPath(id, s.id)}
+                className={`step-tab ${active === s.id ? "is-active" : ""} ${locked(s.id) ? "is-locked" : ""}`}
+                aria-current={active === s.id ? "step" : undefined}
+                onClick={(e) => {
+                  if (e.metaKey || e.ctrlKey) return;
+                  e.preventDefault();
+                  go(s.id);
+                }}
+              >
+                <span className="step-tab__num mono">{String(i + 1).padStart(2, "0")}</span>
+                <s.Icon size={14} />
+                <span>{s.label}</span>
+                {count > 0 && <span className="step-tab__count mono" aria-label={`${count} saved`}>· {count}</span>}
+                {done[s.id] && !count && <span className="step-tab__done" aria-label="done"><CheckIcon size={12} /></span>}
+                {s.id === "resume" && run && <span className="spinner-dot" aria-label="writing" />}
+              </a>
+            </Tooltip>
+          );
+        })}
       </nav>
 
       {checkError && (
@@ -160,7 +277,7 @@ export function JobPage({ id, step, jobsApi, generation, version }: Props) {
           transition={{ duration: 0.18, ease: EASE }}
         >
           {active === "fit" && (
-            <div className="step-narrow">
+            <div className={current.fit_check ? "step-narrow step-narrow--fit" : "step-fill"}>
               <FitStep
                 fit={current.fit_check}
                 hasResume={hasResume}
@@ -181,24 +298,29 @@ export function JobPage({ id, step, jobsApi, generation, version }: Props) {
               generateBusy={generation.running !== null}
               onGenerate={generate}
               onCancel={generation.cancel}
+              fit={current.fit_check ?? null}
+              kbCount={kbCount}
+              next={nudge("resume")}
             />
           )}
           {(active === "match" || active === "outreach" || active === "qa") &&
             (locked(active) ? (
-              <div className="empty">
-                <p className="eyebrow">Step locked</p>
-                <h2 className="heading">Generate the résumé first.</h2>
-                <p className="muted">The {active === "qa" ? "answers" : active === "match" ? "match report" : "messages"} are written from this job's résumé.</p>
-                <button className="btn btn--ink btn--lg" onClick={generate} disabled={generation.running !== null}>
-                  <SparkIcon /> Generate résumé
-                </button>
-              </div>
+              <LockedStep
+                meta={STEP_META.find((m) => m.id === active)!}
+                busy={generation.running !== null}
+                onGenerate={generate}
+              />
             ) : (
-              <Docked pdfUrl={resume.pdfUrl}>
-                {active === "match" && <MatchReportPanel key={`m${id}-${version}`} recordId={id} />}
-                {active === "outreach" && <OutreachPanel key={`o${id}`} recordId={id} />}
-                {active === "qa" && <QAPanel key={`q${id}`} recordId={id} />}
-              </Docked>
+              <DockSplit pdfUrl={resume.pdfUrl}>
+                {active === "match" && (
+                  <MatchReportPanel key={`m${id}-${version}`} recordId={id} onReady={() => setLive((l) => ({ ...l, match: true }))} />
+                )}
+                {active === "outreach" && (
+                  <OutreachPanel key={`o${id}`} recordId={id} onCount={(n) => setLive((l) => ({ ...l, outreach: n }))} />
+                )}
+                {active === "qa" && <QAPanel key={`q${id}`} recordId={id} onCount={(n) => setLive((l) => ({ ...l, qa: n }))} />}
+                {nudge(active)}
+              </DockSplit>
             ))}
         </motion.div>
       </AnimatePresence>
@@ -207,34 +329,27 @@ export function JobPage({ id, step, jobsApi, generation, version }: Props) {
 
 }
 
-// Match / Outreach / Q&A get a readable column, with the résumé docked beside it on wide screens.
-function Docked({ pdfUrl, children }: { pdfUrl: string | null; children: React.ReactNode }) {
-  const [dock, setDock] = useState(() => {
-    try {
-      return localStorage.getItem("sourced-dock") !== "off";
-    } catch {
-      return true;
-    }
-  });
-  const toggle = () =>
-    setDock((d) => {
-      try {
-        localStorage.setItem("sourced-dock", d ? "off" : "on");
-      } catch {
-        /* not remembered */
-      }
-      return !d;
-    });
+// A locked step says what it will give you, so it's a preview — not a dead end.
+function LockedStep({ meta, busy, onGenerate }: { meta: (typeof STEP_META)[number]; busy: boolean; onGenerate: () => void }) {
   return (
-    <div className={`docked ${dock ? "is-docked" : ""}`}>
-      <div className="docked__main">{children}</div>
-      <aside className="docked__sheet" aria-label="Résumé">
-        <div className="docked__bar">
-          <span className="eyebrow">Résumé</span>
-          <button className="btn btn--ghost btn--xs" onClick={toggle} aria-pressed={dock}>{dock ? "Hide" : "Show résumé"}</button>
+    <div className="step-center">
+      <div className="card preview-card">
+        <p className="eyebrow">{meta.label} · needs the résumé</p>
+        <h2 className="heading preview-card__title">Generate the résumé first.</h2>
+        <p className="muted">{meta.tip}</p>
+        <p className="eyebrow preview-card__label">What you'll get</p>
+        <ul className="preview-card__list">
+          {meta.gets.map((g) => (
+            <li key={g}><CheckIcon size={14} /> {g}</li>
+          ))}
+        </ul>
+        <div className="preview-card__actions">
+          <button className="btn btn--ink btn--lg" onClick={onGenerate} disabled={busy}>
+            <SparkIcon /> Generate résumé
+          </button>
+          <span className="muted small">{busy ? "Another résumé is being written — one at a time." : "25–40 seconds, then this step opens."}</span>
         </div>
-        {dock && <Sheet url={pdfUrl} fit />}
-      </aside>
+      </div>
     </div>
   );
 }
@@ -312,7 +427,18 @@ function Header({
       </div>
 
       <div className="job__actions">
-        <ScoreBadge score={job.fit_score} verdict={job.fit_verdict} size="lg" />
+        <Tooltip
+          content={
+            job.fit_score != null && job.fit_verdict
+              ? <>Fit {job.fit_score}/100 · {job.fit_verdict}<span className="tip__meta">Open Fit (1) for why.</span></>
+              : <>No fit check yet<span className="tip__meta">Open Fit (1) — it's free.</span></>
+          }
+        >
+          <button className="score-btn" onClick={() => navigate(jobPath(job.id, "fit"), { replace: true })} aria-label="Fit score — open Fit">
+            <ScoreBadge score={job.fit_score} verdict={job.fit_verdict} size="lg" />
+          </button>
+        </Tooltip>
+        <Tooltip content={<>Where this application stands<span className="tip__meta">Shows in the jobs list and its filters.</span></>}>
         <label className="status-select">
           <span className="sr-only">Application status</span>
           <select
@@ -327,6 +453,7 @@ function Header({
             ))}
           </select>
         </label>
+        </Tooltip>
         {pdfUrl && (
           <a className="btn btn--ink" href={pdfUrl} download={downloadName(latex ?? "", job.label)} title="Download PDF">
             <DownloadIcon /> <span className="btn__label">Download</span>

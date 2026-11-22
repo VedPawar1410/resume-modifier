@@ -18,13 +18,24 @@ interface Props {
 export function FitStep({ fit, hasResume, generating, checking, onCheck, onGenerate, onOpenResume }: Props) {
   if (!fit) {
     return (
-      <div className="empty">
-        <p className="eyebrow">No fit check yet</p>
-        <h2 className="heading">Is this one worth it?</h2>
-        <p className="muted">A free check reads the job against your knowledge base in a few seconds.</p>
-        <button className="btn btn--ink btn--lg" onClick={onCheck} disabled={checking}>
-          {checking ? <span className="spinner-dot" /> : <CheckIcon size={15} />} {checking ? "Checking…" : "Check fit"}
-        </button>
+      <div className="step-center">
+        <div className="card preview-card">
+          <p className="eyebrow">No fit check yet</p>
+          <h2 className="heading preview-card__title">Is this one worth it?</h2>
+          <p className="muted">A free check reads the job against your knowledge base in a few seconds.</p>
+          <p className="eyebrow preview-card__label">What you'll get</p>
+          <ul className="preview-card__list">
+            <li><CheckIcon size={14} /> Apply / maybe / skip, with a 0–100 score</li>
+            <li><CheckIcon size={14} /> Every requirement, matched to evidence in your KB</li>
+            <li><CheckIcon size={14} /> The reasons, in plain words</li>
+          </ul>
+          <div className="preview-card__actions">
+            <button className="btn btn--ink btn--lg" onClick={onCheck} disabled={checking}>
+              {checking ? <span className="spinner-dot" /> : <CheckIcon size={15} />} {checking ? "Checking…" : "Check fit"}
+            </button>
+            <span className="muted small">Free · a few seconds.</span>
+          </div>
+        </div>
       </div>
     );
   }
@@ -34,6 +45,7 @@ export function FitStep({ fit, hasResume, generating, checking, onCheck, onGener
 
   return (
     <div className="fit-step">
+      <div className="fit-step__hero">
       <FitCard fit={fit} />
 
       <div className="next-action">
@@ -47,6 +59,7 @@ export function FitStep({ fit, hasResume, generating, checking, onCheck, onGener
         <button className="btn btn--ghost btn--lg" onClick={onCheck} disabled={checking}>
           {checking ? <span className="spinner-dot" /> : null} {checking ? "Checking…" : "Re-check"}
         </button>
+      </div>
       </div>
 
       {fit.requirements.length > 0 && (

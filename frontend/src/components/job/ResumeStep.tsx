@@ -2,7 +2,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import type { Generation } from "../../hooks/useGeneration";
 import type { useJobResume } from "../../hooks/useJobResume";
-import type { SaveState } from "../../types";
+import type { FitCheck, SaveState } from "../../types";
+import { Tooltip } from "../Tooltip";
 import { GeneratingCard } from "../GeneratingCard";
 import { AlertIcon, CheckIcon, CloseIcon, CodeIcon, SparkIcon } from "../Icons";
 import { LatexEditor } from "../LatexEditor";
@@ -43,9 +44,12 @@ interface Props {
   generateBusy: boolean; // another job is generating
   onGenerate: () => void;
   onCancel: () => void;
+  fit?: FitCheck | null; // the loader shows the must-haves it's matching
+  kbCount?: number;
+  next?: React.ReactNode; // the "Next: Match report" nudge
 }
 
-export function ResumeStep({ hasResume, resume, run, genError, generateBusy, onGenerate, onCancel }: Props) {
+export function ResumeStep({ hasResume, resume, run, genError, generateBusy, onGenerate, onCancel, fit, kbCount, next }: Props) {
   const [editing, setEditing] = useState(false);
   const [wrap, setWrap] = useState(true);
   const [draft, setDraft] = useState<string | null>(null);
@@ -99,24 +103,40 @@ export function ResumeStep({ hasResume, resume, run, genError, generateBusy, onG
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  if (run) return <div className="step-narrow"><GeneratingCard onCancel={onCancel} startedAt={run.startedAt} /></div>;
+  if (run) {
+    return (
+      <div className="step-center">
+        <GeneratingCard onCancel={onCancel} startedAt={run.startedAt} fit={fit} kbCount={kbCount} />
+      </div>
+    );
+  }
 
   if (!hasResume) {
     return (
-      <div className="empty">
-        {genError && (
-          <div className="notice notice--error" role="alert">
-            <AlertIcon />
-            <div><strong>Couldn't generate the résumé.</strong><p>{genError}</p></div>
+      <div className="step-center">
+        <div className="card preview-card">
+          {genError && (
+            <div className="notice notice--error" role="alert">
+              <AlertIcon />
+              <div><strong>Couldn't generate the résumé.</strong><p>{genError}</p></div>
+            </div>
+          )}
+          <p className="eyebrow">No résumé yet</p>
+          <h2 className="heading preview-card__title">Set a one-page résumé for this job.</h2>
+          <p className="muted">Every line comes from your knowledge base — nothing is invented.</p>
+          <p className="eyebrow preview-card__label">What you'll get</p>
+          <ul className="preview-card__list">
+            <li><CheckIcon size={14} /> A one-page PDF tailored to this job</li>
+            <li><CheckIcon size={14} /> The KB entries it used, listed above the sheet</li>
+            <li><CheckIcon size={14} /> A LaTeX editor with live preview, if you want to tweak it</li>
+          </ul>
+          <div className="preview-card__actions">
+            <button className="btn btn--ink btn--lg" onClick={onGenerate} disabled={generateBusy}>
+              <SparkIcon /> Generate résumé
+            </button>
+            <span className="muted small">{generateBusy ? "Another résumé is being written — one at a time." : "25–40 seconds."}</span>
           </div>
-        )}
-        <p className="eyebrow">No résumé yet</p>
-        <h2 className="heading">Set a one-page résumé for this job.</h2>
-        <p className="muted">25–40 seconds. Every line comes from your knowledge base — nothing is invented.</p>
-        <button className="btn btn--ink btn--lg" onClick={onGenerate} disabled={generateBusy}>
-          <SparkIcon /> Generate résumé
-        </button>
-        {generateBusy && <p className="muted small">Another résumé is being written — one at a time.</p>}
+        </div>
       </div>
     );
   }
@@ -127,9 +147,20 @@ export function ResumeStep({ hasResume, resume, run, genError, generateBusy, onG
     <div className={`resume-step ${editing ? "is-editing" : ""}`}>
       <div className="resume-step__bar">
         {resume.kbIds.length > 0 && (
-          <span className="chip" title={resume.kbIds.join(", ")}>{resume.kbIds.length} KB entries</span>
+          <Tooltip
+            content={
+              <>
+                <strong className="tip__title">Used from your knowledge base</strong>
+                <span className="tip__list mono">{resume.kbIds.map((k) => <span key={k}>{k}</span>)}</span>
+                <span className="tip__meta">Written as line 1 of the LaTeX, so it's kept with the résumé.</span>
+              </>
+            }
+          >
+            <span className="chip" tabIndex={0}>{resume.kbIds.length} KB entries</span>
+          </Tooltip>
         )}
         <span className="resume-step__sources mono">{resume.kbIds.join("  ·  ")}</span>
+        {!editing && next}
         <button
           className={`btn btn--ghost btn--sm ${editing ? "is-on" : ""}`}
           onClick={() => {

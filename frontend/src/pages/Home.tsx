@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { resumeApi } from "../api/resumeApi";
 import { GeneratingCard } from "../components/GeneratingCard";
-import { AlertIcon, CheckIcon, RefreshIcon, SparkIcon } from "../components/Icons";
+import { AlertIcon, CheckIcon, CloseIcon, RefreshIcon, SparkIcon } from "../components/Icons";
 import { ScoreBadge, StatusPill } from "../components/job/badges";
 import { splitLabel } from "../utils/jobs";
 import type { GenerationApi } from "../hooks/useGeneration";
@@ -11,6 +11,14 @@ import { jobPath, navigate } from "../hooks/useRoute";
 import type { Job, KBStatus } from "../types";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
+const HINT_KEY = "sourced-hint-seen";
+const hintSeen = () => {
+  try {
+    return localStorage.getItem(HINT_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
 
 interface Props {
   kb: KBStatus | null;
@@ -26,6 +34,15 @@ export function Home({ kb, onRefreshKb, jobs, onJobsChanged, generation }: Props
   const [jd, setJd] = useState("");
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hint, setHint] = useState(() => !hintSeen());
+  const dismissHint = () => {
+    setHint(false);
+    try {
+      localStorage.setItem(HINT_KEY, "1");
+    } catch {
+      /* shows again next time — harmless */
+    }
+  };
 
   const words = jd.trim() ? jd.trim().split(/\s+/).length : 0;
   const busy = checking || generation.running !== null;
@@ -62,7 +79,7 @@ export function Home({ kb, onRefreshKb, jobs, onJobsChanged, generation }: Props
   const recent = (jobs ?? []).slice(0, 6);
 
   return (
-    <div className="home">
+    <div className={`home ${homeRun ? "home--wide" : ""}`}>
       <motion.header className="home__intro" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE }}>
         <div className="eyebrow home__kb">
           <span>New job</span>
@@ -95,7 +112,7 @@ export function Home({ kb, onRefreshKb, jobs, onJobsChanged, generation }: Props
       </motion.header>
 
       {homeRun ? (
-        <GeneratingCard onCancel={generation.cancel} startedAt={homeRun.startedAt} />
+        <GeneratingCard onCancel={generation.cancel} startedAt={homeRun.startedAt} kbCount={kb?.entry_count} />
       ) : (
         <motion.div className="home__body" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.05, ease: EASE }}>
           {(error || genError) && (
@@ -105,6 +122,18 @@ export function Home({ kb, onRefreshKb, jobs, onJobsChanged, generation }: Props
                 <strong>{genError ? "Couldn't generate the résumé." : "Couldn't check the fit."}</strong>
                 <p>{genError ?? error}</p>
               </div>
+            </div>
+          )}
+          {hint && (
+            <div className="hint" role="note">
+              <span className="hint__dot" aria-hidden="true" />
+              <p>
+                <strong>New here?</strong> Check fit is free — it saves the job, so you can come back to it.
+                Then generate the résumé, run the match report, and write outreach and answers from it.
+              </p>
+              <button className="icon-btn icon-btn--sm" onClick={dismissHint} aria-label="Dismiss tip">
+                <CloseIcon size={13} />
+              </button>
             </div>
           )}
           <div className="card composer">
