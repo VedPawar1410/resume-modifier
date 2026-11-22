@@ -128,9 +128,20 @@ export const resumeApi = {
   saveLatex: (id: number, latex_code: string): Promise<SaveLatexResponse> =>
     compileApi.put<SaveLatexResponse>(`/api/history/${id}/latex`, { latex_code }).then((r) => r.data),
 
-  // Saved with the résumé after the first run; refresh=true analyses it again (~1¢, 30–60 s).
-  matchReport: (id: number, refresh = false): Promise<MatchReport> =>
-    api.post<MatchReport>(`/api/history/${id}/match-report`, null, { params: { refresh } }).then((r) => r.data),
+  // The saved report, or null if it has never been run. Free — never calls the AI.
+  getMatchReport: (id: number): Promise<MatchReport | null> =>
+    api
+      .get<MatchReport>(`/api/history/${id}/match-report`)
+      .then((r) => r.data)
+      .catch((err) => {
+        if (err?.response?.status === 404) return null;
+        throw err;
+      }),
+
+  // Runs the report (~1¢, 30–60 s) and saves it; refresh=true analyses it again.
+  // Aborting `signal` drops the connection; the backend notices and stops the AI call.
+  matchReport: (id: number, refresh = false, signal?: AbortSignal): Promise<MatchReport> =>
+    api.post<MatchReport>(`/api/history/${id}/match-report`, null, { params: { refresh }, signal }).then((r) => r.data),
 
   // Outreach: free providers only (Groq → Gemini), a few seconds per message, saved with the résumé.
   outreach: (id: number): Promise<OutreachState> =>

@@ -154,6 +154,9 @@ def test_match_report_get_is_free_and_404_until_run(client, monkeypatch):
     assert client.post(f"/api/history/{job_id}/match-report").status_code == 200
     r = client.get(f"/api/history/{job_id}/match-report")
     assert r.status_code == 200 and calls == [1]
+    detail = client.get(f"/api/history/{job_id}").json()
+    assert detail["has_match_report"] is True
+    assert detail["outreach_count"] == 0 and detail["qa_count"] == 0
 
 
 def test_match_report_get_needs_a_resume(client):

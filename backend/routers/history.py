@@ -134,7 +134,18 @@ async def get_history_record(record_id: int, db: AsyncSession = Depends(get_db))
         **base.model_dump(),
         job_description=record.job_description,
         fit_check=json.loads(record.fit_check) if record.fit_check else None,
+        has_match_report=bool(record.match_report),
+        outreach_count=_json_len(record.outreach),
+        qa_count=_json_len(record.qa),
     )
+
+
+def _json_len(raw: str | None) -> int:
+    """How many items a JSON-list column holds (drafts / answers), for the step-tab counts."""
+    try:
+        return len(json.loads(raw)) if raw else 0
+    except (ValueError, TypeError):
+        return 0
 
 
 @router.get("/{record_id}/pdf")

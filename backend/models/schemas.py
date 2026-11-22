@@ -27,6 +27,10 @@ class HistoryRecord(BaseModel):
 class HistoryDetail(HistoryRecord):
     job_description: Optional[str] = None
     fit_check: Optional[FitCheck] = None
+    # For the step tabs ("Match ✓", "Outreach · 2", "Q&A · 3") without loading each step.
+    has_match_report: bool = False
+    outreach_count: int = 0
+    qa_count: int = 0
 
 
 class HistoryListResponse(BaseModel):

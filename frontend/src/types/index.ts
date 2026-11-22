@@ -68,6 +68,9 @@ export type Job = HistoryRecord;
 export interface JobDetail extends HistoryRecord {
   job_description?: string | null;
   fit_check?: FitCheck | null;
+  has_match_report?: boolean;
+  outreach_count?: number;
+  qa_count?: number;
 }
 
 export interface HistoryListResponse {
