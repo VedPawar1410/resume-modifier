@@ -19,9 +19,18 @@ interface Props {
   onNew: () => void;
   sidebarOpen: boolean;
   onShowSidebar: () => void;
+  onSidePanelChange: (open: boolean) => void; // lets App tuck the sidebar away in narrow windows
 }
 
+type Panel = "match" | "outreach" | "qa";
+
 const AUTOSAVE_MS = 900;
+
+const SEG: { id: Panel; label: string; title: string; Icon: () => React.ReactElement }[] = [
+  { id: "match", label: "Match", title: "Match report: every JD requirement against your KB", Icon: () => <SparkIcon /> },
+  { id: "outreach", label: "Outreach", title: "Who to contact and what to send", Icon: () => <MailIcon /> },
+  { id: "qa", label: "Q&A", title: "Answer the application's extra questions", Icon: () => <ChatIcon /> },
+];
 const EASE = [0.22, 1, 0.36, 1] as const;
 
 // "Ved Pawar" / "Ascendion" → "Ved_Pawar" / "Ascendion" (letters and digits only, for any OS).
@@ -68,16 +77,23 @@ export function ResultView({
   onNew,
   sidebarOpen,
   onShowSidebar,
+  onSidePanelChange,
 }: Props) {
   // App keys this component by record id, so the draft starts fresh for each résumé.
   const [draft, setDraft] = useState(resume.latex);
   const [wrap, setWrap] = useState(true);
   // The match report, outreach and Q&A use the same side pane as the editor; one at a time.
-  const [panel, setPanel] = useState<"match" | "outreach" | "qa" | null>(null);
+  const [panel, setPanel] = useState<Panel | null>(null);
   const sideOpen = editorOpen || panel !== null;
-  const togglePanel = (which: "match" | "outreach" | "qa") => {
+  const togglePanel = (which: Panel) => {
     if (panel !== which && editorOpen) closeEditor();
-    setPanel((open) => (open === which ? null : which));
+    const next = panel === which ? null : which;
+    setPanel(next);
+    onSidePanelChange(next !== null);
+  };
+  const closePanel = () => {
+    setPanel(null);
+    onSidePanelChange(false);
   };
   const draftRef = useRef(draft);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -132,6 +148,19 @@ export function ResultView({
     onEditorOpenChange(false);
   };
 
+  // Esc closes whichever side panel is open.
+  useEffect(() => {
+    if (!sideOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      if ((e.target as HTMLElement | null)?.closest?.(".cm-editor")) return;
+      if (editorOpen) closeEditor();
+      else closePanel();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
   const created = parseDate(resume.createdAt);
   const pageOk = resume.pageCount == null || resume.pageCount === 1;
 
@@ -149,59 +178,45 @@ export function ResultView({
               {created.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })} ·{" "}
               {created.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
             </p>
-            <h1 className="serif result__title" title={resume.title}>{resume.title}</h1>
+            <h1 className="heading result__title" title={resume.title}>{resume.title}</h1>
           </div>
         </div>
 
         <div className="toolbar">
-          {editorOpen ? (
-            <button className="btn btn--ghost" onClick={closeEditor}>
-              <CloseIcon /> Close editor
-            </button>
-          ) : (
+          <div className="seg" role="group" aria-label="Side panel">
             <button
-              className="btn btn--ghost"
+              className={`seg__btn ${editorOpen ? "is-on" : ""}`}
               onClick={() => {
+                if (editorOpen) return closeEditor();
                 setPanel(null);
                 onEditorOpenChange(true);
               }}
               disabled={!resume.recordId}
+              aria-pressed={editorOpen}
+              title="Edit the LaTeX (live preview)"
             >
-              <CodeIcon /> View LaTeX
+              <CodeIcon /> <span className="btn__label">LaTeX</span>
             </button>
-          )}
-          <button
-            className={`btn btn--ghost ${panel === "match" ? "is-on" : ""}`}
-            onClick={() => togglePanel("match")}
-            disabled={!resume.recordId}
-            aria-pressed={panel === "match"}
-          >
-            <SparkIcon /> Match report
-          </button>
-          <button
-            className={`btn btn--ghost ${panel === "outreach" ? "is-on" : ""}`}
-            onClick={() => togglePanel("outreach")}
-            disabled={!resume.recordId}
-            aria-pressed={panel === "outreach"}
-          >
-            <MailIcon /> Outreach
-          </button>
-          <button
-            className={`btn btn--ghost ${panel === "qa" ? "is-on" : ""}`}
-            onClick={() => togglePanel("qa")}
-            disabled={!resume.recordId}
-            aria-pressed={panel === "qa"}
-            title="Answer the application's extra questions"
-          >
-            <ChatIcon /> Q&amp;A
-          </button>
+            {SEG.map(({ id, label, title, Icon }) => (
+              <button
+                key={id}
+                className={`seg__btn ${panel === id ? "is-on" : ""}`}
+                onClick={() => togglePanel(id)}
+                disabled={!resume.recordId}
+                aria-pressed={panel === id}
+                title={title}
+              >
+                <Icon /> <span className="btn__label">{label}</span>
+              </button>
+            ))}
+          </div>
           {resume.pdfUrl && (
-            <a className="btn btn--ink" href={resume.pdfUrl} download={downloadName(draft, resume.title)}>
-              <DownloadIcon /> Download PDF
+            <a className="btn btn--ink" href={resume.pdfUrl} download={downloadName(draft, resume.title)} title="Download PDF">
+              <DownloadIcon /> <span className="btn__label">Download PDF</span>
             </a>
           )}
-          <button className="btn btn--ghost" onClick={onNew}>
-            <PlusIcon /> New résumé
+          <button className="btn btn--ghost" onClick={onNew} title="New résumé">
+            <PlusIcon /> <span className="btn__label">New résumé</span>
           </button>
         </div>
       </header>
@@ -214,10 +229,10 @@ export function ResultView({
         )}
         {resume.kbIds.length > 0 && (
           <span className="chip" title={resume.kbIds.join(", ")}>
-            Built from {resume.kbIds.length} KB entr{resume.kbIds.length !== 1 ? "ies" : "y"}
+            {resume.kbIds.length} KB entr{resume.kbIds.length !== 1 ? "ies" : "y"}
           </span>
         )}
-        {resume.model && <span className="chip chip--mono">{resume.model}</span>}
+        {resume.model && <span className="chip">{resume.model}</span>}
         {resume.retryCount > 0 && <span className="chip chip--warn">{resume.retryCount} auto-repair{resume.retryCount > 1 ? "s" : ""}</span>}
         {resume.kbIds.length > 0 && <span className="result__sources mono">{resume.kbIds.join("  ·  ")}</span>}
       </div>
@@ -266,6 +281,7 @@ export function ResultView({
               aria-label="LaTeX editor"
             >
               <div className="editor-pane__head">
+                <h2 className="pane-title">LaTeX</h2>
                 <span className="mono small">resume.tex</span>
                 <SaveStatus state={saveState} error={saveError} />
                 <button
@@ -279,18 +295,21 @@ export function ResultView({
                 <button className="btn btn--ghost btn--sm" onClick={saveNow} title="Save (⌘S)">
                   Save <kbd>⌘S</kbd>
                 </button>
+                <button className="icon-btn icon-btn--sm" onClick={closeEditor} aria-label="Close editor" title="Close (Esc)">
+                  <CloseIcon size={14} />
+                </button>
               </div>
               <LatexEditor value={draft} onChange={handleChange} wrap={wrap} />
             </motion.section>
           )}
           {panel === "match" && !editorOpen && resume.recordId && (
-            <MatchReportPanel key="match" recordId={resume.recordId} onClose={() => setPanel(null)} />
+            <MatchReportPanel key="match" recordId={resume.recordId} onClose={closePanel} />
           )}
           {panel === "outreach" && !editorOpen && resume.recordId && (
-            <OutreachPanel key="outreach" recordId={resume.recordId} onClose={() => setPanel(null)} />
+            <OutreachPanel key="outreach" recordId={resume.recordId} onClose={closePanel} />
           )}
           {panel === "qa" && !editorOpen && resume.recordId && (
-            <QAPanel key="qa" recordId={resume.recordId} onClose={() => setPanel(null)} />
+            <QAPanel key="qa" recordId={resume.recordId} onClose={closePanel} />
           )}
         </AnimatePresence>
       </div>

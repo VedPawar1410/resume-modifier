@@ -57,18 +57,26 @@ function GeneratingCard({ onCancel }: { onCancel: () => void }) {
   }, []);
   const active = STEPS.filter((s) => elapsed >= s.at).length - 1;
 
+  // A rough sense of progress: the steps' timings, capped so it never claims "done" early.
+  const progress = Math.min(92, (elapsed / 40) * 100);
+  const mm = String(Math.floor(elapsed / 60)).padStart(2, "0");
+  const ss = String(elapsed % 60).padStart(2, "0");
+
   return (
-    <div className="card generating" role="status" aria-live="polite">
+    <div className="card generating">
       <div className="generating__head">
-        <h2 className="serif">Setting your résumé…</h2>
-        <div className="generating__actions">
-          <span className="mono muted">{elapsed}s</span>
-          <button className="btn btn--ghost btn--sm" onClick={onCancel}>
-            <CloseIcon size={14} /> Cancel
-          </button>
+        <div>
+          <p className="eyebrow">Setting your résumé</p>
+          <p className="generating__timer" aria-label={`${elapsed} seconds`}>{mm}:{ss}</p>
         </div>
+        <button className="btn btn--ghost btn--sm" onClick={onCancel}>
+          <CloseIcon size={14} /> Cancel
+        </button>
       </div>
-      <ol className="steps">
+      <div className="progress" aria-hidden="true">
+        <div className="progress__bar" style={{ width: `${progress}%` }} />
+      </div>
+      <ol className="steps" role="status" aria-live="polite">
         {STEPS.map((s, i) => (
           <li key={s.label} className={i < active ? "is-done" : i === active ? "is-active" : ""}>
             <span className="steps__mark">{i < active ? <CheckIcon size={13} /> : <span className="steps__dot" />}</span>
@@ -81,7 +89,6 @@ function GeneratingCard({ onCancel }: { onCancel: () => void }) {
         <AnimatePresence mode="wait">
           <motion.p
             key={quote}
-            className="serif"
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
@@ -131,11 +138,34 @@ export function ComposeView({ kb, onRefreshKb, jobDescription, onJobDescriptionC
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
       >
-        <p className="eyebrow">New résumé</p>
-        <h1 className="serif display">Which job is this one for?</h1>
+        <div className="eyebrow">
+          <span>New résumé</span>
+          {kb === null ? (
+            <span>· Checking knowledge base…</span>
+          ) : kb.found ? (
+            <>
+              <span aria-hidden="true">·</span>
+              <span className="kb-dot" aria-hidden="true" />
+              <span title={counts.map(([s, n]) => `${n} ${s}`).join(" · ")}>
+                Knowledge base {kb.entry_count} entries
+                {kb.last_updated && ` · updated ${kb.last_updated}`}
+              </span>
+              <button className="icon-btn icon-btn--sm" onClick={onRefreshKb} aria-label="Refresh knowledge base" title="Refresh">
+                <RefreshIcon size={13} />
+              </button>
+            </>
+          ) : (
+            <>
+              <span aria-hidden="true">·</span>
+              <span className="kb-dot kb-dot--off" aria-hidden="true" />
+              <span>No knowledge base</span>
+            </>
+          )}
+        </div>
+        <h1 className="heading display">Which job is this one for?</h1>
         <p className="lede">
-          Paste the job description. The most relevant work from your knowledge base is picked and set
-          into a one-page résumé.
+          Paste the job description. Check the fit first if you're unsure, then the most relevant work
+          from your knowledge base is set into a one-page résumé.
         </p>
       </motion.header>
 
@@ -148,27 +178,11 @@ export function ComposeView({ kb, onRefreshKb, jobDescription, onJobDescriptionC
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, delay: 0.06, ease: [0.22, 1, 0.36, 1] }}
         >
-          <div className="kb-line">
-            {kb === null ? (
-              <span className="muted">Checking knowledge base…</span>
-            ) : kb.found ? (
-              <>
-                <span className="kb-line__dot" aria-hidden="true" />
-                <span>
-                  <strong>Knowledge base</strong>
-                  <span className="muted"> · {kb.entry_count} entries · {counts.map(([s, n]) => `${n} ${s}`).join(" · ")}</span>
-                  {kb.last_updated && <span className="muted"> · updated {kb.last_updated}</span>}
-                </span>
-                <button className="icon-btn icon-btn--sm" onClick={onRefreshKb} aria-label="Refresh knowledge base" title="Refresh">
-                  <RefreshIcon size={14} />
-                </button>
-              </>
-            ) : (
-              <span className="text-danger">
-                Knowledge base not found at <code>{kb.path}</code>{kb.error ? ` — ${kb.error}` : ""}
-              </span>
-            )}
-          </div>
+          {kb && !kb.found && (
+            <p className="kb-error">
+              Knowledge base not found at <code>{kb.path}</code>{kb.error ? ` — ${kb.error}` : ""}
+            </p>
+          )}
           {kb?.found && !kb.entries_by_section.projects && (
             <p className="hint-note">No projects in your knowledge base yet — add some with the kb-ingest skill to fill the page.</p>
           )}

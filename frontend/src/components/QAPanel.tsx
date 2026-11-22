@@ -128,7 +128,7 @@ export function QAPanel({ recordId, onClose }: Props) {
       aria-label="Application Q&A"
     >
       <div className="editor-pane__head">
-        <span className="small"><strong>Application Q&amp;A</strong></span>
+        <h2 className="pane-title">Application Q&amp;A</h2>
         <span className="save-status muted">{answers.length ? `${answers.length} saved` : ""}</span>
         <button className="icon-btn icon-btn--sm" onClick={onClose} aria-label="Close Q&A">
           <CloseIcon size={14} />
@@ -152,7 +152,7 @@ export function QAPanel({ recordId, onClose }: Props) {
         {state && (
           <>
             <div className="outreach__section">
-              <h3 className="outreach__h">Answer a question</h3>
+              <h3 className="outreach__h"><span className="muted">01 ·</span> Answer a question</h3>
               <p className="muted small outreach__sub">
                 Paste a screening or supplemental question from the portal. Answers use only the job
                 description, this résumé and your KB — if the KB doesn't have it, it says so.
@@ -257,7 +257,7 @@ export function QAPanel({ recordId, onClose }: Props) {
 
             {answers.length > 0 && (
               <div className="outreach__section">
-                <h3 className="outreach__h">Answers <span className="muted">· {answers.length}</span></h3>
+                <h3 className="outreach__h"><span className="muted">02 ·</span> Answers <span className="muted">· {answers.length}</span></h3>
                 {answers.map((a) => (
                   <AnswerCard
                     key={a.id}

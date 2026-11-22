@@ -1,5 +1,5 @@
-import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 import { AUTH_REQUIRED_EVENT, resumeApi } from "./api/resumeApi";
 import { ComposeView } from "./components/ComposeView";
 import { SidebarIcon } from "./components/Icons";
@@ -17,6 +17,10 @@ const PAGE = {
   transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] as const },
 };
 
+const TUCK_BELOW = 1280; // px window width under which an open side panel hides the sidebar
+const DRAWER_BELOW = 720; // on phones the sidebar is a drawer: closed by default and after picking
+const isPhone = () => window.innerWidth < DRAWER_BELOW;
+
 // "checking" until /api/session answers; "required" shows the password screen (deployed only).
 type AuthState = "checking" | "required" | "ok";
 
@@ -33,15 +37,20 @@ export default function App() {
     return () => window.removeEventListener(AUTH_REQUIRED_EVENT, onAuthRequired);
   }, []);
 
-  if (auth === "checking") {
-    return (
-      <div className="page page--center login">
-        <span className="spinner-dot" /> <span className="muted">Connecting…</span>
-      </div>
-    );
-  }
-  if (auth === "required") return <LoginView onSignedIn={() => setAuth("ok")} />;
-  return <Workspace />;
+  // reducedMotion="user": framer-motion skips movement when the OS asks for less motion.
+  return (
+    <MotionConfig reducedMotion="user">
+      {auth === "checking" ? (
+        <div className="page page--center login">
+          <span className="spinner-dot" /> <span className="muted">Connecting…</span>
+        </div>
+      ) : auth === "required" ? (
+        <LoginView onSignedIn={() => setAuth("ok")} />
+      ) : (
+        <Workspace />
+      )}
+    </MotionConfig>
+  );
 }
 
 // Mounted only once signed in, so its first requests already carry the token.
@@ -51,7 +60,7 @@ function Workspace() {
   const [kb, setKb] = useState<KBStatus | null>(null);
   const [pdflatexOk, setPdflatexOk] = useState<boolean | null>(null);
   const [historyVersion, setHistoryVersion] = useState(0);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => !isPhone());
   const [editorOpen, setEditorOpen] = useState(false);
 
   const loadKb = () => {
@@ -71,8 +80,22 @@ function Workspace() {
 
   // The split editor wants the full width, so opening it tucks the sidebar away.
   const changeEditorOpen = (open: boolean) => {
+    tuckedForPanel.current = false;
     setEditorOpen(open);
-    setSidebarOpen(!open);
+    setSidebarOpen(!open && !isPhone());
+  };
+
+  // Opening a side panel in a narrow window tucks the sidebar away (and closing it brings it
+  // back), so the résumé, the panel and the toolbar never have to share a cramped strip.
+  const tuckedForPanel = useRef(false);
+  const handleSidePanel = (open: boolean) => {
+    if (open && sidebarOpen && window.innerWidth < TUCK_BELOW) {
+      tuckedForPanel.current = true;
+      setSidebarOpen(false);
+    } else if (!open && tuckedForPanel.current) {
+      tuckedForPanel.current = false;
+      setSidebarOpen(true);
+    }
   };
 
   const handleGenerate = async (fit: FitCheck | null) => {
@@ -136,6 +159,7 @@ function Workspace() {
                 onNew={handleNew}
                 sidebarOpen={sidebarOpen}
                 onShowSidebar={() => setSidebarOpen(true)}
+                onSidePanelChange={handleSidePanel}
               />
             </motion.div>
           ) : ws.phase === "opening" ? (

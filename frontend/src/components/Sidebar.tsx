@@ -4,6 +4,7 @@ import { resumeApi } from "../api/resumeApi";
 import type { HistoryRecord } from "../types";
 import { parseDate } from "../utils/dates";
 import { AlertIcon, CheckIcon, CloseIcon, PencilIcon, PlusIcon, SidebarIcon, TrashIcon } from "./Icons";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface Props {
   activeId: number | null;
@@ -77,9 +78,10 @@ export function Sidebar({ activeId, version, pdflatexOk, onNew, onOpen, onDelete
   return (
     <aside className="sidebar">
       <div className="sidebar__top">
-        <div className="brand">
-          <span className="brand__serif">Sourced</span>
-        </div>
+        <p className="brand">
+          <span className="brand__word">Sourced</span>
+          <span className="brand__dot" aria-hidden="true" />
+        </p>
         <button className="icon-btn" onClick={onCollapse} aria-label="Hide sidebar" title="Hide sidebar">
           <SidebarIcon />
         </button>
@@ -158,12 +160,18 @@ export function Sidebar({ activeId, version, pdflatexOk, onNew, onOpen, onDelete
           ))}
       </nav>
 
-      {pdflatexOk === false && (
-        <div className="sidebar__warning">
-          <AlertIcon size={14} />
-          <span>pdflatex not found — PDFs can't be built. <code>brew install --cask mactex-no-gui</code></span>
+      <div className="sidebar__foot">
+        {pdflatexOk === false && (
+          <div className="sidebar__warning">
+            <AlertIcon size={14} />
+            <span>pdflatex not found — PDFs can't be built. <code>brew install --cask mactex-no-gui</code></span>
+          </div>
+        )}
+        <div className="sidebar__foot-row">
+          <span className="eyebrow">{records ? `${records.length} résumé${records.length === 1 ? "" : "s"}` : "\u00a0"}</span>
+          <ThemeToggle />
         </div>
-      )}
+      </div>
     </aside>
   );
 }

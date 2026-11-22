@@ -12,11 +12,11 @@ interface Props {
 const EASE = [0.22, 1, 0.36, 1] as const;
 
 // Buckets in the order you act on them: what's covered, what you could swap in, what's thin, what's absent.
-const BUCKETS: { status: MatchStatus; title: string; hint: string }[] = [
-  { status: "on_resume", title: "On the résumé", hint: "In your KB and shown here" },
-  { status: "left_out", title: "In your KB, left out", hint: "You have it — swap it in with the editor if it matters" },
-  { status: "weak", title: "Weak evidence", hint: "Only a course, a mention, or a 'familiar' skill" },
-  { status: "missing", title: "Missing", hint: "Not in your knowledge base" },
+const BUCKETS: { status: MatchStatus; title: string; stat: string; hint: string }[] = [
+  { status: "on_resume", title: "On the résumé", stat: "On résumé", hint: "In your KB and shown here" },
+  { status: "left_out", title: "In your KB, left out", stat: "Left out", hint: "You have it — swap it in with the editor if it matters" },
+  { status: "weak", title: "Weak evidence", stat: "Weak", hint: "Only a course, a mention, or a 'familiar' skill" },
+  { status: "missing", title: "Missing", stat: "Missing", hint: "Not in your knowledge base" },
 ];
 
 function errorText(err: unknown): string {
@@ -62,7 +62,7 @@ export function MatchReportPanel({ recordId, onClose }: Props) {
       aria-label="Match report"
     >
       <div className="editor-pane__head">
-        <span className="small"><strong>Match report</strong></span>
+        <h2 className="pane-title">Match report</h2>
         <span className="save-status muted">{report?.model ?? ""}</span>
         <button
           className="btn btn--ghost btn--sm"
@@ -79,9 +79,12 @@ export function MatchReportPanel({ recordId, onClose }: Props) {
 
       <div className="match__body">
         {loading && (
-          <div className="match__loading" role="status">
-            <span className="spinner-dot" /> Reading the job description against your knowledge base…
-            <p className="muted small">Under a minute the first time (about 1¢) — then it's saved with this résumé.</p>
+          <div role="status">
+            <div className="match__loading">
+              <span className="spinner-dot" /> Reading the job description against your knowledge base…
+              <p className="muted small">Under a minute the first time (about 1¢) — then it's saved with this résumé.</p>
+            </div>
+            <div className="skeleton" aria-hidden="true"><i /><i /><i /><i /><i /></div>
           </div>
         )}
 
@@ -95,12 +98,18 @@ export function MatchReportPanel({ recordId, onClose }: Props) {
         {!loading && report && s && (
           <>
             <div className="match__summary">
-              <p className="serif match__score">
-                {s.must_have_covered}/{s.must_have_total} <span>must-haves on the résumé</span>
+              <p className="match__hero">
+                <span className="num">{s.must_have_covered}/{s.must_have_total}</span>
+                <span className="eyebrow">Must-haves on the résumé</span>
               </p>
-              <p className="muted small">
-                {s.counts.left_out} left out · {s.counts.weak} weak · {s.counts.missing} missing
-              </p>
+              <div className="stats">
+                {BUCKETS.map(({ status, stat }) => (
+                  <div key={status} className={`stat stat--${status}`}>
+                    <p className="eyebrow"><span className="dot" aria-hidden="true" />{stat}</p>
+                    <p className="stat__value">{report.requirements.filter((r) => r.status === status).length}</p>
+                  </div>
+                ))}
+              </div>
               {report.advice && <p className="match__advice">{report.advice}</p>}
             </div>
 
@@ -109,8 +118,9 @@ export function MatchReportPanel({ recordId, onClose }: Props) {
               if (!items.length) return null;
               return (
                 <div key={status} className={`match__group match__group--${status}`}>
-                  <h3>
-                    {title} <span className="muted">· {items.length}</span>
+                  <h3 className="eyebrow">
+                    <span className="dot" aria-hidden="true" />
+                    {title} <span>· {items.length}</span>
                   </h3>
                   <p className="muted small match__hint">{hint}</p>
                   <ul>

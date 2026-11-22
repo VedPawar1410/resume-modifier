@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { useState, type FormEvent } from "react";
 import { resumeApi } from "../api/resumeApi";
 import { AlertIcon } from "./Icons";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface Props {
   onSignedIn: () => void;
@@ -31,6 +32,7 @@ export function LoginView({ onSignedIn }: Props) {
 
   return (
     <div className="login">
+      <ThemeToggle className="login__theme" />
       <motion.form
         className="card login__card"
         onSubmit={submit}
@@ -39,9 +41,10 @@ export function LoginView({ onSignedIn }: Props) {
         transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
       >
         <p className="brand login__brand">
-          <span className="brand__serif">Sourced</span>
+          <span className="brand__word">Sourced</span>
+          <span className="brand__dot" aria-hidden="true" />
         </p>
-        <h1 className="serif login__title">Welcome back.</h1>
+        <h1 className="heading login__title">Welcome back.</h1>
         <p className="muted login__lede">Every line on your résumé, sourced from your own work.</p>
 
         {error && (

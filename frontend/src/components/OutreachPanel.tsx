@@ -124,7 +124,7 @@ export function OutreachPanel({ recordId, onClose }: Props) {
       aria-label="Outreach"
     >
       <div className="editor-pane__head">
-        <span className="small"><strong>Outreach</strong></span>
+        <h2 className="pane-title">Outreach</h2>
         <span className="save-status muted">{state?.guide.company ?? ""}</span>
         <button className="icon-btn icon-btn--sm" onClick={onClose} aria-label="Close outreach">
           <CloseIcon size={14} />
@@ -148,7 +148,7 @@ export function OutreachPanel({ recordId, onClose }: Props) {
         {state && (
           <>
             <div className="outreach__section">
-              <h3 className="outreach__h">Who to contact</h3>
+              <h3 className="outreach__h"><span className="muted">01 ·</span> Who to contact</h3>
               <p className="muted small outreach__sub">
                 Searches for {state.guide.company}, opened in LinkedIn or Google. You pick the person.
               </p>
@@ -166,7 +166,7 @@ export function OutreachPanel({ recordId, onClose }: Props) {
             </div>
 
             <div className="outreach__section">
-              <h3 className="outreach__h">Write a message</h3>
+              <h3 className="outreach__h"><span className="muted">02 ·</span> Write a message</h3>
               <div className="outreach__kinds" role="radiogroup" aria-label="Message type">
                 {KINDS.map((k) => (
                   <button
@@ -265,7 +265,7 @@ export function OutreachPanel({ recordId, onClose }: Props) {
 
             {drafts.length > 0 && (
               <div className="outreach__section">
-                <h3 className="outreach__h">Drafts <span className="muted">· {drafts.length}</span></h3>
+                <h3 className="outreach__h"><span className="muted">03 ·</span> Drafts <span className="muted">· {drafts.length}</span></h3>
                 {drafts.map((d) => (
                   <DraftCard key={d.id} recordId={recordId} draft={d} onSaved={replaceDraft}
                     onDelete={() => removeDraft(d.id)} />
