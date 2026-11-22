@@ -8,7 +8,7 @@ import { AlertIcon, CheckIcon, CloseIcon, MailIcon, TrashIcon } from "./Icons";
 
 interface Props {
   recordId: number;
-  onClose: () => void;
+  onClose?: () => void; // omitted when shown as a job step (steps don't close)
 }
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -126,9 +126,11 @@ export function OutreachPanel({ recordId, onClose }: Props) {
       <div className="editor-pane__head">
         <h2 className="pane-title">Outreach</h2>
         <span className="save-status muted">{state?.guide.company ?? ""}</span>
-        <button className="icon-btn icon-btn--sm" onClick={onClose} aria-label="Close outreach">
-          <CloseIcon size={14} />
-        </button>
+        {onClose && (
+          <button className="icon-btn icon-btn--sm" onClick={onClose} aria-label="Close outreach">
+            <CloseIcon size={14} />
+          </button>
+        )}
       </div>
 
       <div className="match__body">

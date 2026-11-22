@@ -5,6 +5,8 @@ import type {
   GenerateResponse,
   HistoryListResponse,
   HistoryRecord,
+  JobDetail,
+  JobStatus,
   KBStatus,
   MatchReport,
   OutreachDraft,
@@ -84,12 +86,28 @@ export const resumeApi = {
 
   // Aborting `signal` drops the connection; the backend notices and stops the AI call.
   // The fit check (if one was run on this JD) is saved with the résumé.
-  generateFromKb: (job_description: string, fit_check: FitCheck | null, signal?: AbortSignal): Promise<GenerateResponse> =>
-    api.post<GenerateResponse>("/api/generate-from-kb", { job_description, fit_check }, { signal }).then((r) => r.data),
+  // record_id fills that existing job (made by a fit check) instead of creating a new one.
+  generateFromKb: (
+    job_description: string,
+    fit_check: FitCheck | null,
+    record_id: number | null,
+    signal?: AbortSignal,
+  ): Promise<GenerateResponse> =>
+    api
+      .post<GenerateResponse>("/api/generate-from-kb", { job_description, fit_check, record_id }, { signal })
+      .then((r) => r.data),
 
-  // Apply / maybe / skip before generating: free providers, a few seconds, nothing saved.
+  // Apply / maybe / skip before generating: free providers, a few seconds. Saved as a job
+  // (no résumé yet) — the result carries its record_id.
   fitCheck: (job_description: string): Promise<FitCheck> =>
     api.post<FitCheck>("/api/fit-check", { job_description }).then((r) => r.data),
+
+  getJob: (id: number): Promise<JobDetail> =>
+    api.get<JobDetail>(`/api/history/${id}`).then((r) => r.data),
+
+  // Rename and/or set the status; status null clears it.
+  updateJob: (id: number, patch: { label?: string; status?: JobStatus | null }): Promise<HistoryRecord> =>
+    api.patch<HistoryRecord>(`/api/history/${id}`, patch).then((r) => r.data),
 
   compile: (latex_code: string): Promise<CompileResponse> =>
     compileApi.post<CompileResponse>("/api/compile", { latex_code }).then((r) => r.data),
@@ -152,6 +170,4 @@ export const resumeApi = {
   deleteHistory: (id: number): Promise<void> =>
     api.delete(`/api/history/${id}`).then(() => undefined),
 
-  renameHistory: (id: number, label: string): Promise<HistoryRecord> =>
-    api.patch<HistoryRecord>(`/api/history/${id}`, { label }).then((r) => r.data),
 };

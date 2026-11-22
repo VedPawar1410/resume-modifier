@@ -6,7 +6,7 @@ import { AlertIcon, CloseIcon, RefreshIcon } from "./Icons";
 
 interface Props {
   recordId: number;
-  onClose: () => void;
+  onClose?: () => void; // omitted when shown as a job step (steps don't close)
 }
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -72,9 +72,11 @@ export function MatchReportPanel({ recordId, onClose }: Props) {
         >
           <RefreshIcon size={13} /> Re-run
         </button>
-        <button className="icon-btn icon-btn--sm" onClick={onClose} aria-label="Close match report">
-          <CloseIcon size={14} />
-        </button>
+        {onClose && (
+          <button className="icon-btn icon-btn--sm" onClick={onClose} aria-label="Close match report">
+            <CloseIcon size={14} />
+          </button>
+        )}
       </div>
 
       <div className="match__body">

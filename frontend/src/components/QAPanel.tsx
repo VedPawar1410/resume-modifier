@@ -6,7 +6,7 @@ import { AlertIcon, ChatIcon, CheckIcon, CloseIcon, RefreshIcon, TrashIcon } fro
 
 interface Props {
   recordId: number;
-  onClose: () => void;
+  onClose?: () => void; // omitted when shown as a job step (steps don't close)
 }
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -130,9 +130,11 @@ export function QAPanel({ recordId, onClose }: Props) {
       <div className="editor-pane__head">
         <h2 className="pane-title">Application Q&amp;A</h2>
         <span className="save-status muted">{answers.length ? `${answers.length} saved` : ""}</span>
-        <button className="icon-btn icon-btn--sm" onClick={onClose} aria-label="Close Q&A">
-          <CloseIcon size={14} />
-        </button>
+        {onClose && (
+          <button className="icon-btn icon-btn--sm" onClick={onClose} aria-label="Close Q&A">
+            <CloseIcon size={14} />
+          </button>
+        )}
       </div>
 
       <div className="match__body">

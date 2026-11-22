@@ -244,6 +244,22 @@ clean. What's left for you is optional (budget alert, KB consistency session, §
        - [ ] Try it on a few real profiles (recruiter, manager, alum) and tune the trim lists if noise
              gets through. LinkedIn's "More → Save to PDF" upload is a possible later input.
 
+5. [ ] **Sourced v2 — job-centred UI** (built 2026-11-22 on branch `redesign/jobs`, not merged).
+       The app is organised around **jobs**: every fit-checked JD is saved as a job, and Fit →
+       Résumé → Match → Outreach → Q&A are its steps (`/jobs/:id/:step`). Icon rail + jobs pane
+       (search, Apply/Maybe/Skip and status filters) + content; Home is the composer + recent jobs;
+       ⌘K palette; Knowledge-base page (section bars + health); phones get a bottom tab bar.
+       - **API (additive, works with the old frontend):** fit check saves a job (`modified_latex ""`
+         = no résumé yet; same JD reuses it), generate takes `record_id` and fills that job,
+         `status` column (applied/interviewing/offer/rejected), `GET /api/history/{id}`, list items
+         carry `status / has_resume / fit_verdict / fit_score`, steps 409 until a résumé exists.
+         First backend tests: `backend/tests/test_jobs.py` (pytest, in `requirements-dev.txt`).
+       - The fit step now shows the requirements table the check always returned. Match / Outreach /
+         Q&A get a readable column with the résumé docked beside it at ≥1280px.
+       - `frontend/vercel.json` adds the SPA rewrite so job URLs survive a refresh.
+       - [ ] **You:** look at it locally, then say merge. Ship order: backend first (it's additive),
+             then the frontend. A Vercel preview needs its URL in `CORS_ORIGINS`.
+
 ---
 
 ## 🅱️ Track B — the product for everyone (after Track A)

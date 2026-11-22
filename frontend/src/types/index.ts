@@ -41,6 +41,16 @@ export interface SaveLatexResponse {
 export type Phase = "compose" | "generating" | "opening" | "result";
 export type SaveState = "idle" | "unsaved" | "saving" | "saved" | "error";
 
+export type JobStatus = "applied" | "interviewing" | "offer" | "rejected";
+export const JOB_STATUSES: { id: JobStatus; label: string }[] = [
+  { id: "applied", label: "Applied" },
+  { id: "interviewing", label: "Interviewing" },
+  { id: "offer", label: "Offer" },
+  { id: "rejected", label: "Rejected" },
+];
+
+// One job in the list (the backend still calls them history records). A job exists from its
+// fit check; has_resume says whether a résumé has been generated for it yet.
 export interface HistoryRecord {
   id: number;
   created_at: string;
@@ -48,6 +58,16 @@ export interface HistoryRecord {
   label: string;
   job_description_preview?: string;
   sections_modified: string[];
+  status?: JobStatus | null;
+  has_resume: boolean;
+  fit_verdict?: FitVerdict | null;
+  fit_score?: number | null;
+}
+export type Job = HistoryRecord;
+
+export interface JobDetail extends HistoryRecord {
+  job_description?: string | null;
+  fit_check?: FitCheck | null;
 }
 
 export interface HistoryListResponse {
@@ -101,6 +121,7 @@ export interface FitCheck {
   }[];
   must_have_coverage: number;
   model: string;
+  record_id?: number | null; // the job this check was saved as
 }
 
 // ── Outreach (cold email / LinkedIn) — mirrors backend services/outreach_service.py ──

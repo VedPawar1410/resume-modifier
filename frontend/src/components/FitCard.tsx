@@ -89,7 +89,7 @@ export function FitCard({ fit }: { fit: FitCheck }) {
           </li>
         ))}
       </ul>
-      <p className="fit__foot muted small">Free check · nothing is saved until you generate</p>
+      <p className="fit__foot muted small">Free check · saved with this job</p>
     </motion.section>
   );
 }
