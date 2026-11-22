@@ -29,7 +29,11 @@ class ResumeRecord(Base):
     fit_check: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Application Q&A answers as a JSON list (qa_service.Answer), newest last.
     qa: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Where the application stands: applied / interviewing / offer / rejected (None = not yet).
+    status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     sections_modified: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    # "" = a job that's only been fit-checked, no résumé yet (the column is NOT NULL, and
+    # ADDED_COLUMNS can't relax that on an existing database).
     modified_latex: Mapped[str] = mapped_column(Text, nullable=False)
     pdf_bytes: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
 

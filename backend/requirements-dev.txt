@@ -1,0 +1,1 @@
+pytest==8.4.2  # tests only (backend/tests); not installed in the Docker image
