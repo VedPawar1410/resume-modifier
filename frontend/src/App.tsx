@@ -1,21 +1,20 @@
-import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
+import { useCallback, useEffect, useState } from "react";
 import { AUTH_REQUIRED_EVENT, resumeApi } from "./api/resumeApi";
-import { ComposeView } from "./components/ComposeView";
-import { SidebarIcon } from "./components/Icons";
+import { AlertIcon } from "./components/Icons";
 import { LoginView } from "./components/LoginView";
-import { ResultView } from "./components/ResultView";
-import { Sidebar } from "./components/Sidebar";
-import { useResume } from "./hooks/useResume";
-import type { FitCheck, HistoryRecord, KBStatus } from "./types";
+import { CommandPalette } from "./components/shell/CommandPalette";
+import { JobsPane } from "./components/shell/JobsPane";
+import { Rail } from "./components/shell/Rail";
+import { Toaster } from "./components/Toast";
+import { useGeneration } from "./hooks/useGeneration";
+import { useJobs } from "./hooks/useJobs";
+import { jobPath, navigate, useRoute } from "./hooks/useRoute";
+import { Home } from "./pages/Home";
+import { JobPage } from "./pages/JobPage";
+import { KBPage } from "./pages/KBPage";
+import type { GenerateResponse, KBStatus } from "./types";
 import "./index.css";
-
-const PAGE = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -4 },
-  transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] as const },
-};
 
 // "checking" until /api/session answers; "required" shows the password screen (deployed only).
 type AuthState = "checking" | "required" | "ok";
@@ -33,33 +32,48 @@ export default function App() {
     return () => window.removeEventListener(AUTH_REQUIRED_EVENT, onAuthRequired);
   }, []);
 
-  if (auth === "checking") {
-    return (
-      <div className="page page--center login">
-        <span className="spinner-dot" /> <span className="muted">Connecting…</span>
-      </div>
-    );
-  }
-  if (auth === "required") return <LoginView onSignedIn={() => setAuth("ok")} />;
-  return <Workspace />;
+  // reducedMotion="user": framer-motion skips movement when the OS asks for less motion.
+  return (
+    <MotionConfig reducedMotion="user">
+      {auth === "checking" ? (
+        <div className="page--center login">
+          <span className="spinner-dot" /> <span className="muted">Connecting…</span>
+        </div>
+      ) : auth === "required" ? (
+        <LoginView onSignedIn={() => setAuth("ok")} />
+      ) : (
+        <Workspace />
+      )}
+    </MotionConfig>
+  );
 }
+
+const PANE_KEY = "sourced-pane";
+const readPane = () => {
+  try {
+    return localStorage.getItem(PANE_KEY) !== "closed";
+  } catch {
+    return true;
+  }
+};
 
 // Mounted only once signed in, so its first requests already carry the token.
 function Workspace() {
-  const ws = useResume();
-  const [jobDescription, setJobDescription] = useState("");
+  const route = useRoute();
+  const jobsApi = useJobs();
   const [kb, setKb] = useState<KBStatus | null>(null);
   const [pdflatexOk, setPdflatexOk] = useState<boolean | null>(null);
-  const [historyVersion, setHistoryVersion] = useState(0);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [editorOpen, setEditorOpen] = useState(false);
+  const [paneOpen, setPaneOpen] = useState(readPane);
+  const [palette, setPalette] = useState(false);
+  // Bumped per job when a new résumé lands, so an open job page reloads it.
+  const [versions, setVersions] = useState<Record<number, number>>({});
 
-  const loadKb = () => {
+  const loadKb = useCallback(() => {
     resumeApi
       .kbStatus()
       .then(setKb)
       .catch(() => setKb({ path: "(backend unreachable)", found: false, entry_count: 0, entries_by_section: {} }));
-  };
+  }, []);
 
   useEffect(() => {
     resumeApi
@@ -67,97 +81,81 @@ function Workspace() {
       .then((h) => setPdflatexOk(h.pdflatex_available))
       .catch(() => setPdflatexOk(false));
     loadKb();
+  }, [loadKb]);
+
+  const onGenerated = (r: GenerateResponse, jobId: number | null) => {
+    jobsApi.reload();
+    const id = r.record_id ?? jobId;
+    if (id == null) return;
+    setVersions((v) => ({ ...v, [id]: (v[id] ?? 0) + 1 }));
+    // Started from Home: open the new job. Started on a job: show its résumé if you're still there.
+    if (jobId === null) navigate(jobPath(id, "resume"));
+  };
+  const generation = useGeneration(onGenerated);
+
+  const togglePane = () =>
+    setPaneOpen((open) => {
+      try {
+        localStorage.setItem(PANE_KEY, open ? "closed" : "open");
+      } catch {
+        /* not remembered */
+      }
+      return !open;
+    });
+
+  // ⌘K / Ctrl+K opens the palette from anywhere.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPalette((p) => !p);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // The split editor wants the full width, so opening it tucks the sidebar away.
-  const changeEditorOpen = (open: boolean) => {
-    setEditorOpen(open);
-    setSidebarOpen(!open);
-  };
-
-  const handleGenerate = async (fit: FitCheck | null) => {
-    const ok = await ws.generate(jobDescription, fit);
-    setHistoryVersion((v) => v + 1);
-    if (ok) setJobDescription("");
-  };
-
-  const handleNew = () => {
-    changeEditorOpen(false);
-    ws.newResume();
-  };
-
-  const handleOpen = (record: HistoryRecord) => {
-    changeEditorOpen(false);
-    ws.open(record);
-  };
-
-  const handleDeleted = (id: number) => {
-    if (ws.current?.recordId === id) handleNew();
-  };
-
-  const handleRenamed = (id: number, label: string) => {
-    if (ws.current?.recordId === id) ws.rename(label);
-  };
-
-  const showResult = ws.phase === "result" && ws.current;
+  const activeId = route.name === "job" ? route.id : null;
+  const showPane = paneOpen && route.name !== "kb";
+  const viewKey = route.name === "job" ? `job-${route.id}` : route.name;
 
   return (
-    <div className={`shell ${sidebarOpen ? "" : "shell--collapsed"}`}>
-      <Sidebar
-        activeId={ws.current?.recordId ?? null}
-        version={historyVersion}
-        pdflatexOk={pdflatexOk}
-        onNew={handleNew}
-        onOpen={handleOpen}
-        onDeleted={handleDeleted}
-        onRenamed={handleRenamed}
-        onCollapse={() => setSidebarOpen(false)}
-      />
+    <div className={`app ${showPane ? "app--pane" : ""}`}>
+      <Rail route={route} paneOpen={paneOpen} onTogglePane={togglePane} onPalette={() => setPalette(true)} />
+      {showPane && <JobsPane jobs={jobsApi.jobs} activeId={activeId} generatingId={generation.running?.jobId ?? null} />}
 
-      <main className="workspace">
-        {!sidebarOpen && !showResult && (
-          <button className="icon-btn workspace__toggle" onClick={() => setSidebarOpen(true)} aria-label="Show sidebar">
-            <SidebarIcon />
-          </button>
+      <main className="content">
+        {pdflatexOk === false && (
+          <div className="notice notice--warn content__banner">
+            <AlertIcon size={14} />
+            <span>pdflatex not found — PDFs can't be built. <code>brew install --cask mactex-no-gui</code></span>
+          </div>
         )}
-
         <AnimatePresence mode="wait">
-          {showResult ? (
-            <motion.div key={`result-${ws.current!.recordId}`} className="page" {...PAGE}>
-              <ResultView
-                key={ws.current!.recordId ?? "unsaved"}
-                resume={ws.current!}
-                editorOpen={editorOpen}
-                onEditorOpenChange={changeEditorOpen}
-                saveState={ws.saveState}
-                saveError={ws.saveError}
-                onSave={ws.save}
-                onEdit={ws.markUnsaved}
-                onNew={handleNew}
-                sidebarOpen={sidebarOpen}
-                onShowSidebar={() => setSidebarOpen(true)}
-              />
-            </motion.div>
-          ) : ws.phase === "opening" ? (
-            <motion.div key="opening" className="page page--center" {...PAGE}>
-              <span className="spinner-dot" /> <span className="muted">Opening résumé…</span>
-            </motion.div>
-          ) : (
-            <motion.div key="compose" className="page" {...PAGE}>
-              <ComposeView
-                kb={kb}
-                onRefreshKb={loadKb}
-                jobDescription={jobDescription}
-                onJobDescriptionChange={setJobDescription}
-                generating={ws.phase === "generating"}
-                error={ws.error}
-                onGenerate={handleGenerate}
-                onCancel={ws.cancel}
-              />
-            </motion.div>
-          )}
+          <motion.div
+            key={viewKey}
+            className="view"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            {route.name === "home" && (
+              <Home kb={kb} onRefreshKb={loadKb} jobs={jobsApi.jobs} onJobsChanged={jobsApi.reload} generation={generation} />
+            )}
+            {route.name === "jobs" && (
+              <JobsPane jobs={jobsApi.jobs} activeId={null} generatingId={generation.running?.jobId ?? null} page />
+            )}
+            {route.name === "job" && (
+              <JobPage id={route.id} step={route.step} jobsApi={jobsApi} generation={generation} version={versions[route.id] ?? 0} kbCount={kb?.entry_count} />
+            )}
+            {route.name === "kb" && <KBPage kb={kb} onRefresh={loadKb} />}
+          </motion.div>
         </AnimatePresence>
       </main>
+
+      <Toaster />
+      <CommandPalette open={palette} onClose={() => setPalette(false)} jobs={jobsApi.jobs} route={route} />
     </div>
   );
 }

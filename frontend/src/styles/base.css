@@ -1,0 +1,296 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Base: reset, type roles, buttons, inputs, cards, notices, chips, small pieces.
+   Sourced — "Midnight Ledger"
+   Answer-first: each screen leads with one big thing (the verdict, the timer, the
+   must-have score, the résumé). Space Grotesk headings, Inter body, IBM Plex Mono
+   labels and numbers, hairline rules. Colours come only from styles/tokens.css,
+   so every rule below works in both themes.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 14.5px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  transition: background-color 0.25s var(--ease), color 0.25s var(--ease);
+}
+
+button, input, textarea, select { font: inherit; color: inherit; }
+::placeholder { color: var(--faint); opacity: 1; }
+::selection { background: var(--accent-soft); }
+code { font-family: var(--font-mono); font-size: 0.88em; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+kbd {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 0 5px;
+  border-radius: 5px;
+  border: 1px solid currentColor;
+  opacity: 0.55;
+  margin-left: 2px;
+}
+a { color: var(--accent); }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+/* Thin scrollbars that match the theme */
+* { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+
+/* ── Type roles ───────────────────────────────────────────────────────────── */
+.heading { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.02em; }
+.mono { font-family: var(--font-mono); }
+.num { font-family: var(--font-display); font-variant-numeric: tabular-nums; letter-spacing: -0.04em; }
+.muted { color: var(--muted); }
+.small { font-size: 12.5px; }
+.text-ok { color: var(--ok); }
+.text-warn { color: var(--warn); }
+.text-danger { color: var(--danger); }
+
+/* Mono uppercase label: "VERDICT · APPLY" */
+.eyebrow {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ── Buttons (pills) ──────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 15px;
+  border-radius: var(--r-pill);
+  border: 1px solid transparent;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s var(--ease), opacity 0.15s;
+}
+.btn:active:not(:disabled) { transform: scale(0.98); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Primary: inverted ink — near-black in light, white in dark */
+.btn--ink { background: var(--btn-primary); color: var(--btn-primary-ink); }
+.btn--ink:hover:not(:disabled) { background: var(--btn-primary-hover); }
+.btn--ghost { background: transparent; border-color: var(--line-strong); color: var(--ink-2); }
+.btn--ghost:hover:not(:disabled) { background: var(--hover); color: var(--ink); }
+.btn--ghost.is-on { border-color: transparent; color: var(--accent); background: var(--accent-soft); }
+.btn--danger { background: var(--danger); color: var(--btn-primary-ink); }
+.btn--danger:hover { filter: brightness(1.08); }
+.btn--block { width: 100%; }
+.btn--lg { height: 42px; padding: 0 20px; font-size: 14.5px; }
+.btn--sm { height: 30px; padding: 0 12px; font-size: 13px; }
+.btn--xs { height: 26px; padding: 0 10px; font-size: 12px; }
+
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.icon-btn:hover { background: var(--hover); color: var(--ink); }
+.icon-btn--sm { width: 26px; height: 26px; }
+.icon-btn--danger:hover { background: var(--danger-soft); color: var(--danger); }
+
+/* One input style everywhere (outreach, Q&A, login, rename) */
+.input,
+.outreach__input,
+.login__input {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  font-size: 14px;
+  line-height: 1.5;
+  transition: border-color 0.15s;
+}
+.input:hover, .outreach__input:hover, .login__input:hover { border-color: var(--faint); }
+.input:focus-visible, .outreach__input:focus-visible, .login__input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: transparent;
+  border-radius: 10px;
+}
+select.outreach__input { appearance: auto; }
+
+/* ── Cards & notices ──────────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-card);
+}
+
+.notice {
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 13.5px;
+}
+.notice p { margin: 2px 0 0; color: var(--ink-2); white-space: pre-wrap; word-break: break-word; }
+.notice svg { flex-shrink: 0; margin-top: 2px; }
+.notice--error { background: var(--danger-soft); color: var(--danger); }
+.notice--warn { background: var(--warn-soft); color: var(--warn); }
+
+/* ── Display type ─────────────────────────────────────────────────────────── */
+.display { margin: 0; font-size: clamp(38px, 5vw, 56px); line-height: 1.04; letter-spacing: -0.035em; text-wrap: balance; }
+.lede { margin: 16px 0 0; max-width: 56ch; font-size: 16.5px; color: var(--muted); }
+.kb-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 3px var(--ok-soft);
+  flex-shrink: 0;
+}
+.kb-dot--off { background: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
+.field-label { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 500; color: var(--ink-2); }
+
+/* ── Chips ──────────────────────────────────────────────────────────────── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: var(--r-pill);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+  background: var(--surface-2);
+}
+.chip--ok { color: var(--ok); background: var(--ok-soft); }
+.chip--warn { color: var(--warn); background: var(--warn-soft); }
+.chip--mono { font-family: var(--font-mono); }
+
+/* ── Small pieces ─────────────────────────────────────────────────────────── */
+.spinner-dot {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid var(--line-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Password screen (deployed app only) ──────────────────────────────────── */
+.login {
+  position: relative;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+}
+.login__theme { position: absolute; top: 16px; right: 16px; }
+.login__card { width: min(400px, 100%); padding: 32px 30px 30px; display: flex; flex-direction: column; border-radius: var(--r-lg); }
+.login__brand { margin: 0 0 28px; }
+.login__title { margin: 0; font-size: 40px; line-height: 1.05; letter-spacing: -0.035em; }
+.login__lede { margin: 10px 0 24px; font-size: 14.5px; }
+.login .notice { margin-bottom: 16px; }
+.login__input { height: 44px; font-size: 15px; }
+.login__submit { margin-top: 16px; justify-content: center; }
+
+
+/* ── Tooltip: inverted ink, a small arrow, fixed so nothing clips it ───────── */
+.tip-anchor { display: inline-flex; }
+.tip {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 300px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 12.5px;
+  font-weight: 400;
+  line-height: 1.45;
+  text-align: left;
+  white-space: normal;
+  pointer-events: none;
+  box-shadow: 0 10px 30px -12px var(--scrim);
+  animation: tip-in 0.12s var(--ease);
+}
+.tip--bottom { transform: translateX(-50%); }
+.tip--top { transform: translate(-50%, -100%); }
+.tip--right { transform: translateY(-50%); }
+.tip::before { content: ""; position: absolute; width: 8px; height: 8px; background: inherit; transform: rotate(45deg); }
+.tip--bottom::before { top: -4px; left: calc(50% + var(--arrow, 0px) - 4px); }
+.tip--top::before { bottom: -4px; left: calc(50% + var(--arrow, 0px) - 4px); }
+.tip--right::before { left: -4px; top: calc(50% - 4px); }
+.tip__title { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
+.tip__title kbd { opacity: 0.7; }
+.tip__meta { font-family: var(--font-mono); font-size: 11px; opacity: 0.78; }
+.tip__list { display: flex; flex-direction: column; gap: 2px; font-size: 11.5px; }
+@keyframes tip-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── Toast: bottom-centre, one at a time ───────────────────────────────────── */
+.toaster { position: fixed; left: 50%; bottom: 24px; z-index: 70; transform: translateX(-50%); pointer-events: none; }
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px 10px 16px;
+  border-radius: var(--r-pill);
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 13.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: 0 12px 32px -12px var(--scrim);
+  pointer-events: auto;
+}
+.toast__action {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid currentColor;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.toast__action:hover { background: var(--bg); color: var(--ink); }
+@media (max-width: 720px) { .toaster { bottom: 76px; } } /* above the phone tab bar */

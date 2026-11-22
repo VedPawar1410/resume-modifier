@@ -6,6 +6,7 @@ import { stex } from "@codemirror/legacy-modes/mode/stex";
 import { Decoration, EditorView, ViewPlugin, type DecorationSet, type ViewUpdate } from "@codemirror/view";
 import { RangeSetBuilder } from "@codemirror/state";
 import { tags as t } from "@lezer/highlight";
+import { useTheme } from "../hooks/useTheme";
 
 interface Props {
   value: string;
@@ -17,28 +18,55 @@ interface Props {
 const SECTION_RE = /\\section\*?\{([^}]+)\}/g;
 const SECTION_LINE_RE = /^\s*\\section\*?\{/;
 
-// ── Light theme matching the app's paper palette (index.css color vars) ──────
-const latexTheme = createTheme({
+// ── Two editor themes matching the app's tokens (styles/tokens.css) ──────────
+// CodeMirror themes are JS objects, not CSS variables, so the hexes mirror the tokens.
+const font = "'IBM Plex Mono', ui-monospace, monospace";
+
+const lightTheme = createTheme({
   theme: "light",
   settings: {
     background: "#FFFFFF",
-    foreground: "#1A1916", // --ink
-    caret: "#2B4ACB", // --accent
-    selection: "rgba(43,74,203,0.14)",
-    selectionMatch: "rgba(43,74,203,0.08)",
-    lineHighlight: "rgba(26,25,22,0.025)",
-    gutterBackground: "#FBFAF7",
-    gutterForeground: "#A39E93",
+    foreground: "#0F172A", // --ink
+    caret: "#1E40AF", // --accent
+    selection: "rgba(30,64,175,0.14)",
+    selectionMatch: "rgba(30,64,175,0.08)",
+    lineHighlight: "rgba(15,23,42,0.03)",
+    gutterBackground: "#FFFFFF",
+    gutterForeground: "#94A3B8",
     gutterBorder: "transparent",
-    fontFamily: "'Geist Mono', ui-monospace, monospace",
+    fontFamily: font,
   },
   styles: [
-    { tag: [t.keyword, t.tagName], color: "#2B4ACB" }, // LaTeX commands (\section, \textbf)
-    { tag: [t.brace, t.bracket, t.punctuation], color: "#8A857B" },
-    { tag: [t.string, t.literal], color: "#1E7B4F" },
-    { tag: [t.comment], color: "#9A958A", fontStyle: "italic" }, // % comments
-    { tag: [t.number, t.atom], color: "#B45309" },
-    { tag: [t.variableName, t.attributeName], color: "#1A1916" },
+    { tag: [t.keyword, t.tagName], color: "#1E40AF" }, // LaTeX commands (\section, \textbf)
+    { tag: [t.brace, t.bracket, t.punctuation], color: "#64748B" },
+    { tag: [t.string, t.literal], color: "#0F766E" },
+    { tag: [t.comment], color: "#64748B", fontStyle: "italic" }, // % comments
+    { tag: [t.number, t.atom], color: "#A15C07" },
+    { tag: [t.variableName, t.attributeName], color: "#0F172A" },
+  ],
+});
+
+const darkTheme = createTheme({
+  theme: "dark",
+  settings: {
+    background: "#17171A", // --surface
+    foreground: "#E4E4E7",
+    caret: "#6B95FF",
+    selection: "rgba(107,149,255,0.24)",
+    selectionMatch: "rgba(107,149,255,0.12)",
+    lineHighlight: "rgba(255,255,255,0.03)",
+    gutterBackground: "#17171A",
+    gutterForeground: "#5C5C66",
+    gutterBorder: "transparent",
+    fontFamily: font,
+  },
+  styles: [
+    { tag: [t.keyword, t.tagName], color: "#8FB0FF" },
+    { tag: [t.brace, t.bracket, t.punctuation], color: "#85858F" },
+    { tag: [t.string, t.literal], color: "#2DD4BF" },
+    { tag: [t.comment], color: "#85858F", fontStyle: "italic" },
+    { tag: [t.number, t.atom], color: "#F5B454" },
+    { tag: [t.variableName, t.attributeName], color: "#E4E4E7" },
   ],
 });
 
@@ -81,6 +109,7 @@ const wrappedExtensions = [...baseExtensions, EditorView.lineWrapping];
 
 export function LatexEditor({ value, onChange, wrap }: Props) {
   const cmRef = useRef<ReactCodeMirrorRef>(null);
+  const { theme } = useTheme();
 
   // Section names + their character offsets, for the jump chips.
   const sections = useMemo(() => {
@@ -114,7 +143,7 @@ export function LatexEditor({ value, onChange, wrap }: Props) {
         className="latex-editor__cm"
         value={value}
         onChange={onChange}
-        theme={latexTheme}
+        theme={theme === "dark" ? darkTheme : lightTheme}
         extensions={wrap ? wrappedExtensions : baseExtensions}
         height="100%"
         spellCheck={false}

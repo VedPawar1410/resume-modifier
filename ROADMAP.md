@@ -167,10 +167,26 @@ clean. What's left for you is optional (budget alert, KB consistency session, §
              skill buried in a project's text may show as missing — *Generate anyway* is there.
        - Optional later: paste a *public* careers-page URL (Greenhouse, Lever, Workday…) and Sourced
          fetches the JD — LinkedIn job pages need your login, so those stay copy-paste.
-3. [ ] **Professional UI/UX pass** — make the whole app feel like a polished, smooth product:
-       layout, typography, spacing, motion, empty/loading/error states, the side panels (editor,
-       match report, outreach), and narrow-window behaviour (the result header squeezes when
-       the sidebar and a side panel are both open in a narrow window).
+3. [x] **Professional UI/UX pass — dark + light** (2026-11-22). Design system "Midnight Ledger":
+       ChatGPT-calm dark (#0A0A0B page, #111113 sidebar, #17171A surfaces, white pill primary, one
+       blue accent) + a matching light theme; answer-first hierarchy (one huge number per screen).
+       - **Tokens:** `frontend/src/styles/tokens.css` — both themes, the contract Track B reuses.
+         `<html data-theme>` is set before first paint (saved choice, else the OS); sun/moon toggle in
+         the sidebar footer and on the login screen. All text tokens checked ≥ 4.5:1 (WCAG AA).
+       - **Type:** Space Grotesk headings/numbers, Inter body, IBM Plex Mono labels (Google Fonts, no
+         new packages). Pills for buttons/inputs, hairlines instead of shadows.
+       - **Screens:** KB status in a mono eyebrow; ChatGPT-style JD composer; fit check is a verdict
+         hero (score counts up + meter + 3 stat columns); loader leads with a big timer; result
+         toolbar is one segmented control (LaTeX · Match · Outreach · Q&A); match report leads with
+         "12/21 must-haves" + bucket stats + advice pull-quote; numbered panel sections; dark
+         CodeMirror theme.
+       - **Narrow windows fixed at the root:** the result is a CSS size container (icon-only toolbar
+         under 1140px of its own width, panel stacks under 640px); any panel tucks the sidebar away
+         under a 1280px window; side pane is clamp(360px, 42%, 600px); Esc closes panels; phones get
+         a drawer sidebar.
+       - Mockups: Canva design `DAHbqI20D0A` (synthetic content).
+       - [ ] Not checked visually: the login screen (needs `APP_PASSWORD` locally) — check on the
+             live site after deploying.
 4. [x] **Application Q&A** (Ved's idea, 2026-11-18; built 2026-11-22) — a **Q&A** button on each
        résumé (next to Outreach): paste a portal's screening / supplemental question, get an answer to
        copy straight in. Grounded in the JD, this résumé and the KB; if the KB lacks a fact it says so.
@@ -227,6 +243,22 @@ clean. What's left for you is optional (budget alert, KB consistency session, §
          gets the same facts.
        - [ ] Try it on a few real profiles (recruiter, manager, alum) and tune the trim lists if noise
              gets through. LinkedIn's "More → Save to PDF" upload is a possible later input.
+
+5. [ ] **Sourced v2 — job-centred UI** (built 2026-11-22 on branch `redesign/jobs`, not merged).
+       The app is organised around **jobs**: every fit-checked JD is saved as a job, and Fit →
+       Résumé → Match → Outreach → Q&A are its steps (`/jobs/:id/:step`). Icon rail + jobs pane
+       (search, Apply/Maybe/Skip and status filters) + content; Home is the composer + recent jobs;
+       ⌘K palette; Knowledge-base page (section bars + health); phones get a bottom tab bar.
+       - **API (additive, works with the old frontend):** fit check saves a job (`modified_latex ""`
+         = no résumé yet; same JD reuses it), generate takes `record_id` and fills that job,
+         `status` column (applied/interviewing/offer/rejected), `GET /api/history/{id}`, list items
+         carry `status / has_resume / fit_verdict / fit_score`, steps 409 until a résumé exists.
+         First backend tests: `backend/tests/test_jobs.py` (pytest, in `requirements-dev.txt`).
+       - The fit step now shows the requirements table the check always returned. Match / Outreach /
+         Q&A get a readable column with the résumé docked beside it at ≥1280px.
+       - `frontend/vercel.json` adds the SPA rewrite so job URLs survive a refresh.
+       - [ ] **You:** look at it locally, then say merge. Ship order: backend first (it's additive),
+             then the frontend. A Vercel preview needs its URL in `CORS_ORIGINS`.
 
 ---
 
@@ -303,7 +335,7 @@ Quality pass round 1 — full KB (~68K tokens), Claude Haiku 5.5, 2026-11-18:
 - **History search / filter** once the list grows.
 - **Show the JD next to the résumé** (needs the full JD stored — Track A §3).
 - **Local model (Ollama)** — rejected for now (M1 16 GB: slow, weaker, truncation risk).
-- ~~Dark mode~~ — light-only chosen on 2026-11-05.
+- ~~Dark mode~~ — light-only chosen on 2026-11-05; **reversed 2026-11-22**: dark + light shipped (Next up §3).
 - ~~Base résumés / tailor / refine~~ — replaced by the knowledge base on 2026-11-05.
 
 ---
