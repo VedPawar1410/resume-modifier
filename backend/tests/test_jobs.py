@@ -122,3 +122,75 @@ def test_status_set_clear_and_validate(client):
     assert r["label"] == "Northwind" and r["status"] == "applied"
     assert client.patch(f"/api/history/{job_id}", json={"status": None}).json()["status"] is None
     assert client.patch(f"/api/history/{job_id}", json={"status": "ghosted"}).status_code == 422
+
+
+# ── Match report: opt-in (GET is free) and cancellable (POST) ─────────────────
+
+def _job_with_resume(client):
+    job_id = client.post("/api/fit-check", json={"job_description": JD}).json()["record_id"]
+    client.post("/api/generate-from-kb", json={"job_description": JD, "record_id": job_id})
+    return job_id
+
+
+def test_match_report_get_is_free_and_404_until_run(client, monkeypatch):
+    import routers.history as history_router
+    from services.match_service import MatchReport, _summarise
+
+    calls = []
+
+    async def fake_build(kb_text, jd, latex):
+        calls.append(1)
+        return MatchReport(requirements=[], summary=_summarise([]), model="stub")
+
+    monkeypatch.setattr(history_router, "load_kb", lambda: "kb")
+    monkeypatch.setattr(history_router, "build_match_report", fake_build)
+    job_id = _job_with_resume(client)
+
+    # Opening the Match step only GETs: nothing saved yet → 404, and no AI call.
+    assert client.get(f"/api/history/{job_id}/match-report").status_code == 404
+    assert calls == []
+
+    # Running it saves; the GET then returns it, still without calling the AI again.
+    assert client.post(f"/api/history/{job_id}/match-report").status_code == 200
+    r = client.get(f"/api/history/{job_id}/match-report")
+    assert r.status_code == 200 and calls == [1]
+
+
+def test_match_report_get_needs_a_resume(client):
+    job_id = client.post("/api/fit-check", json={"job_description": JD}).json()["record_id"]
+    assert client.get(f"/api/history/{job_id}/match-report").status_code == 409
+
+
+def test_match_report_cancel_stops_the_task_and_saves_nothing(client, monkeypatch):
+    """Call the endpoint directly with a request that reports a disconnect: the AI task must be
+    cancelled and no report saved — the same contract Cancel relies on for generation."""
+    import routers.history as history_router
+
+    started, cancelled = asyncio.Event(), []
+
+    async def slow_build(kb_text, jd, latex):
+        started.set()
+        try:
+            await asyncio.sleep(30)
+        except asyncio.CancelledError:
+            cancelled.append(1)
+            raise
+
+    monkeypatch.setattr(history_router, "load_kb", lambda: "kb")
+    monkeypatch.setattr(history_router, "build_match_report", slow_build)
+    monkeypatch.setattr(history_router, "DISCONNECT_POLL_SECONDS", 0.01)
+    job_id = _job_with_resume(client)
+    get_db = main.app.dependency_overrides[database.get_db]
+
+    class GoneRequest:
+        async def is_disconnected(self):
+            return started.is_set()
+
+    async def run():
+        async for db in get_db():
+            return await history_router.match_report(job_id, GoneRequest(), False, db)
+
+    resp = asyncio.run(run())
+    assert resp.status_code == 499
+    assert cancelled == [1]
+    assert client.get(f"/api/history/{job_id}/match-report").status_code == 404

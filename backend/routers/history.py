@@ -1,7 +1,10 @@
+import asyncio
 import base64
+import contextlib
 import json
+import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,6 +37,7 @@ from services.outreach_service import (
     split_title,
     who_to_contact,
 )
+from routers.kb import DISCONNECT_POLL_SECONDS
 from services.qa_service import (
     Answer,
     AnswerUpdate,
@@ -48,6 +52,7 @@ from services.qa_service import (
     load_answers,
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/history", tags=["history"])
 
 
@@ -225,15 +230,30 @@ async def delete_history_record(
         raise HTTPException(status_code=404, detail="Record not found")
 
 
+@router.get("/{record_id}/match-report", response_model=MatchReport)
+async def get_match_report(record_id: int, db: AsyncSession = Depends(get_db)) -> MatchReport:
+    """The saved match report, or 404 if none has been run yet. Free — never calls the AI.
+    The page opens with this, so looking at the Match step never spends anything by itself."""
+    record = await _get_record(db, record_id, need_resume=True)
+    if not record.match_report:
+        raise HTTPException(status_code=404, detail="No match report yet")
+    return MatchReport.model_validate_json(record.match_report)
+
+
 @router.post("/{record_id}/match-report", response_model=MatchReport)
 async def match_report(
     record_id: int,
+    http_request: Request,
     refresh: bool = False,
     db: AsyncSession = Depends(get_db),
-) -> MatchReport:
+):
     """
     How this résumé covers its job description. Computed on demand (~1¢, 30–60 s) and saved, so
     opening it again is free; `refresh=true` recomputes it (e.g. after editing the résumé).
+
+    Like generate-from-kb, the work runs as a task while we watch the connection: if the user
+    presses Cancel the browser drops the request, the task is cancelled (the AI call closes)
+    and nothing is saved.
     """
     record = await _get_record(db, record_id, need_resume=True)
     if record.match_report and not refresh:
@@ -248,8 +268,20 @@ async def match_report(
         kb_text = load_kb()
     except KBNotFoundError as e:
         raise HTTPException(status_code=503, detail=str(e))
+
+    task = asyncio.create_task(build_match_report(kb_text, record.job_description, record.modified_latex))
+    while True:
+        done, _ = await asyncio.wait({task}, timeout=DISCONNECT_POLL_SECONDS)
+        if done:
+            break
+        if await http_request.is_disconnected():
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+            logger.info("Client cancelled the match report — stopped it, nothing saved")
+            return Response(status_code=499)
     try:
-        report = await build_match_report(kb_text, record.job_description, record.modified_latex)
+        report = task.result()
     except AIServiceError as e:
         raise HTTPException(status_code=502, detail=str(e))
     record.match_report = report.model_dump_json()
