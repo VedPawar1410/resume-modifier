@@ -33,6 +33,19 @@ from services.outreach_service import (
     split_title,
     who_to_contact,
 )
+from services.qa_service import (
+    Answer,
+    AnswerUpdate,
+    QARequest,
+    QAState,
+    SimilarAnswer,
+    SimilarRequest,
+    answer_question,
+    dump_answers,
+    entry_options,
+    find_similar,
+    load_answers,
+)
 
 router = APIRouter(prefix="/api/history", tags=["history"])
 
@@ -290,4 +303,80 @@ async def delete_outreach(record_id: int, draft_id: str, db: AsyncSession = Depe
     if len(kept) == len(drafts):
         raise HTTPException(status_code=404, detail="Draft not found")
     record.outreach = dump_drafts(kept)
+    await db.commit()
+
+
+# ── Application Q&A (screening / supplemental questions) ─────────────────────
+
+@router.get("/{record_id}/qa", response_model=QAState)
+async def get_qa(record_id: int, db: AsyncSession = Depends(get_db)) -> QAState:
+    """Saved answers for this résumé, plus the KB projects/jobs for the "use this project" picker."""
+    record = await _get_record(db, record_id)
+    return QAState(answers=load_answers(record.qa), entries=entry_options(_load_kb_or_503(), record.modified_latex))
+
+
+@router.post("/{record_id}/qa", response_model=Answer)
+async def create_qa(record_id: int, req: QARequest, db: AsyncSession = Depends(get_db)) -> Answer:
+    """
+    Answer one question with the free providers (Groq / Gemini) from the JD, this résumé and the KB
+    entries it's about, and save it. `replace_id` (regenerate) puts the new answer in the old one's place.
+    """
+    record = await _get_record(db, record_id)
+    if not record.job_description:
+        raise HTTPException(
+            status_code=409,
+            detail="This résumé was made before full job descriptions were saved — "
+                   "generate it again to answer questions for it.",
+        )
+    kb_text = _load_kb_or_503()
+    try:
+        answer = await answer_question(req, kb_text, record.job_description, record.modified_latex)
+    except AIServiceError as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"The free AI providers are busy or failed — try again in a minute.\n{e}",
+        )
+    answers = load_answers(record.qa)
+    if req.replace_id and any(a.id == req.replace_id for a in answers):
+        answers = [answer if a.id == req.replace_id else a for a in answers]
+    else:
+        answers.append(answer)
+    record.qa = dump_answers(answers)
+    await db.commit()
+    return answer
+
+
+@router.post("/{record_id}/qa/similar", response_model=list[SimilarAnswer])
+async def similar_qa(record_id: int, req: SimilarRequest, db: AsyncSession = Depends(get_db)) -> list[SimilarAnswer]:
+    """Saved answers to similar questions, across every résumé. Plain word overlap — no AI, no cost."""
+    rows = (await db.execute(
+        select(ResumeRecord.id, ResumeRecord.label, ResumeRecord.qa).where(ResumeRecord.qa.is_not(None))
+    )).fetchall()
+    return find_similar(req.question, [(r.id, r.label, r.qa) for r in rows])
+
+
+@router.patch("/{record_id}/qa/{answer_id}", response_model=Answer)
+async def update_qa(
+    record_id: int, answer_id: str, update: AnswerUpdate, db: AsyncSession = Depends(get_db),
+) -> Answer:
+    """Save an edited answer."""
+    record = await _get_record(db, record_id)
+    answers = load_answers(record.qa)
+    for i, a in enumerate(answers):
+        if a.id == answer_id:
+            answers[i] = a.model_copy(update={"answer": update.answer, "warning": ""})
+            record.qa = dump_answers(answers)
+            await db.commit()
+            return answers[i]
+    raise HTTPException(status_code=404, detail="Answer not found")
+
+
+@router.delete("/{record_id}/qa/{answer_id}", status_code=204)
+async def delete_qa(record_id: int, answer_id: str, db: AsyncSession = Depends(get_db)) -> None:
+    record = await _get_record(db, record_id)
+    answers = load_answers(record.qa)
+    kept = [a for a in answers if a.id != answer_id]
+    if len(kept) == len(answers):
+        raise HTTPException(status_code=404, detail="Answer not found")
+    record.qa = dump_answers(kept)
     await db.commit()

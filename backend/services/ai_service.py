@@ -29,6 +29,7 @@ MATCH_REPORT_SYSTEM = _load_prompt("match_report_system.txt")
 OUTREACH_SYSTEM = _load_prompt("outreach_system.txt")
 PROFILE_PARSE_SYSTEM = _load_prompt("profile_parse_system.txt")
 FIT_CHECK_SYSTEM = _load_prompt("fit_check_system.txt")
+QA_SYSTEM = _load_prompt("qa_system.txt")
 
 GROQ_MODEL       = "openai/gpt-oss-120b"
 OPENROUTER_MODEL = "deepseek/deepseek-r1-0528-qwen3-8b:free"
@@ -96,12 +97,14 @@ async def call_ai(
     reasoning_effort: str | None = None,
     models: dict[str, str] | None = None,
     max_retries: int | None = None,
+    caps: dict[str, int] | None = None,
 ) -> tuple[str, str]:
     """
     Try each configured provider named in `order` (default Claude → Groq → OpenRouter).
     Providers not in `order` are never tried — outreach passes ("Groq", "Gemini") so it can't
     fall through to the paid model. `max_tokens` lowers the output cap; `reasoning_effort` goes
     only to providers that accept it. `models` swaps a provider's model ({"Groq": "..."}), same key.
+    `caps` sets an output cap per provider ({"Gemini": 4096}), overriding `max_tokens` for it.
     `max_retries=0` turns off the SDK's own retry, which waits out a 429 (up to ~40 s on Groq)
     instead of moving on to the next provider.
     Returns (response text, model that produced it).
@@ -125,6 +128,8 @@ async def call_ai(
         if reasoning_effort and p.accepts_reasoning_effort:
             extra["reasoning_effort"] = reasoning_effort
         cap = min(p.max_tokens, max_tokens) if max_tokens else p.max_tokens
+        if caps and p.name in caps:
+            cap = min(p.max_tokens, caps[p.name])
         try:
             # Streamed so a cancel can stop generation: if the user cancels, this coroutine is
             # cancelled, the `async with` closes the connection, and the provider stops writing
@@ -317,4 +322,35 @@ Output the JSON object only."""
         FIT_CHECK_SYSTEM, user_message, temperature=0.1,
         order=("Groq", "Gemini"), max_tokens=1536, reasoning_effort="low",
         max_retries=0,  # Ved is waiting on the screen: a Groq 429 goes straight to Gemini
+    )
+
+
+# ── Application Q&A (screening / supplemental questions) ─────────────────────
+
+QA_MAX_TOKENS = 1536  # answers use ~150-400 tokens; the rest is room for reasoning
+GROQ_TPM = 8000  # Groq free tier: prompt + max_tokens per minute, per model
+
+
+def estimate_tokens(text: str) -> int:
+    """Rough: ~3.8 characters per token (measured on real Q&A prompts: 3.87). Errs slightly high."""
+    return int(len(text) / 3.8)
+
+
+async def qa_answer(user_message: str) -> tuple[str, str]:
+    """
+    One answer → JSON text {"answer", "used_ids", "not_in_kb"} (parsed in qa_service).
+    Free providers only, like outreach. Code already trimmed the prompt (one or two KB entries, not
+    the KB); when it still won't fit Groq's 8K tokens/minute — usually a story with a long entry —
+    Gemini goes first, so we don't spend a request (and Ved's time) on a guaranteed 429.
+    """
+    prompt_tokens = estimate_tokens(QA_SYSTEM) + estimate_tokens(user_message)
+    fits_groq = prompt_tokens + QA_MAX_TOKENS <= GROQ_TPM - 300  # headroom for the estimate
+    logger.info(f"Q&A prompt ≈ {prompt_tokens} tokens → {'Groq' if fits_groq else 'Gemini'} first")
+    return await call_ai(
+        QA_SYSTEM, user_message, temperature=0.4,
+        order=("Groq", "Gemini") if fits_groq else ("Gemini", "Groq"),
+        max_tokens=QA_MAX_TOKENS, reasoning_effort="low",
+        # Gemini's hidden thinking counts as output and it has no 8K/min squeeze, so it gets room.
+        caps={"Gemini": 4096},
+        max_retries=0,  # Ved is waiting: a 429 moves straight to the other provider
     )

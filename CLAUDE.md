@@ -85,6 +85,10 @@ so it decompresses streams with zlib to read `/Count`.
   `POST /api/history/{id}/outreach/parse-profile` reads a pasted LinkedIn profile into the recipient
   fields (code trims the page chrome, `profile_parse()` on its own smaller models, code checks school
   and company). Nothing stored. Prompt edits need a backend restart (`--reload` watches only `.py`).
+- `/api/history/{id}/qa` — Application Q&A (`services/qa_service.py`, prompt `prompts/qa_system.txt`):
+  code types the question, picks + trims the KB entries it's about, one free call (Gemini first when
+  the prompt won't fit Groq's 8K/min); answers in the `qa` column; `POST …/qa/similar` = word overlap
+  across all résumés, no AI.
 
 ### Frontend state flow
 

@@ -146,3 +146,45 @@ export interface ProfileParse {
   warning: string;
   model: string;
 }
+
+// ── Application Q&A — mirrors backend services/qa_service.py ──
+export type QAKind = "short" | "motivation" | "story" | "skill" | "other";
+export type QAUnit = "words" | "characters";
+
+export interface QARequest {
+  question: string;
+  kind: QAKind | "auto";
+  limit: number | null;
+  unit: QAUnit;
+  entry_ids: string[];
+  notes: string;
+  replace_id?: string | null;
+}
+
+export interface QAAnswer {
+  id: string;
+  created_at: string;
+  question: string;
+  kind: QAKind;
+  limit: number | null;
+  unit: QAUnit;
+  entry_ids: string[];
+  notes: string;
+  answer: string;
+  used_ids: string[];
+  not_in_kb: string;
+  model: string;
+  warning: string;
+}
+
+export interface QAState {
+  answers: QAAnswer[];
+  entries: { id: string; title: string; on_resume: boolean }[];
+}
+
+export interface QASimilar {
+  record_id: number;
+  resume_title: string;
+  answer: QAAnswer;
+  score: number;
+}

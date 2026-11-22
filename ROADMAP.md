@@ -171,20 +171,34 @@ clean. What's left for you is optional (budget alert, KB consistency session, §
        layout, typography, spacing, motion, empty/loading/error states, the side panels (editor,
        match report, outreach), and narrow-window behaviour (the result header squeezes when
        the sidebar and a side panel are both open in a narrow window).
-4. [ ] **Application Q&A** (Ved's idea, 2026-11-18) — application portals often ask extra questions
-       ("Why this company?", "Describe a project where…", "Your experience with X?"). Recruiters call
-       these *screening* or *supplemental* questions. A tab on each résumé, next to Outreach: paste a
-       question, get an answer you can copy straight into the portal.
-       - Grounded like everything else: answers come from the JD, this résumé and the KB (the full
-         entries for the projects a question is about, not only the résumé bullets). No invented
-         facts; if the KB has nothing, it says so instead of making something up.
-       - Per question: an optional word/character limit (portals often cap answers), a tone
-         (short factual vs a fuller story, e.g. STAR for "describe a time…"), and regenerate/edit/copy.
-       - Saved with the résumé like Outreach drafts, so similar questions later can reuse them.
-       - Likely free providers (Groq → Gemini), reusing the Outreach plumbing — decide when planning.
-       - Covers yes/no and short fields too (notice period, relocation, work authorization) from the
-         KB's Profile/Targeting. A cover letter could live here later.
-       - Research when planning: common question types, and length/format conventions.
+4. [x] **Application Q&A** (Ved's idea, 2026-11-18; built 2026-11-22) — a **Q&A** button on each
+       résumé (next to Outreach): paste a portal's screening / supplemental question, get an answer to
+       copy straight in. Grounded in the JD, this résumé and the KB; if the KB lacks a fact it says so.
+       - **How the prompt stays small (approach A):** code sorts the question (short field / why us /
+         story / skill / other), picks the KB entries it's about (word overlap with each entry's title,
+         tags and summary; ties go to the résumé's `% kb-ids:`; a project the question names always
+         wins; or Ved picks one), and keeps only the subsections that type needs ("Bullets I like"
+         never goes — it's on the résumé). One free call. ~2.5K tokens for a short field, ~4.5K for
+         "why us", ~6-9K for a story / skill. **$0**, 1-20 s.
+       - **Groq or Gemini first:** code estimates the prompt; if prompt + 1.5K cap won't fit Groq's
+         8K/min it asks Gemini first (stories usually do) instead of spending a call on a sure 429.
+         Gemini gets a 4K cap (its hidden thinking counts as output).
+       - **Checks in code:** invented KB ids dropped; length counted against the limit (aims 80-95%,
+         one rewrite if over); missing facts shown as a warning ("I haven't used Kubernetes yet" —
+         tested). A short field whose KB Profile value is empty answers with **no AI call**.
+       - **Controls:** type chips (Auto + 5), optional limit in words or characters, "About which
+         project", Notes (facts taken as true). Each answer: edit (autosaves), Regenerate (in place),
+         Copy, delete, live word/char count, "From your KB: …" sources.
+       - **Reuse:** typing a question shows "You answered something similar" from **all** résumés
+         (word overlap, no AI) with a Copy button.
+       - **Saved:** `qa` column (JSON list). `GET/POST /api/history/{id}/qa`, `POST …/qa/similar`,
+         `PATCH/DELETE …/qa/{answer_id}`. `services/qa_service.py`, `prompts/qa_system.txt`.
+       - [ ] **You:** add to kb.md Profile (private repo, or via kb-ingest): `work_authorization`
+             (still only the template comment), `notice_period`, `earliest_start`, `relocation`,
+             `salary_expectation`. Until then those questions say "not in your KB" (or use Notes).
+       - [ ] Watch: keyword matching can miss a project whose skill is buried deep in its text — use
+             the project picker. Gemini answers took 8-60 s in testing (Groq ~1-3 s).
+       - Later: a cover letter could live here.
 5. [x] **Outreach: fill the form from a LinkedIn profile** (Ved's idea, 2026-11-18; built 2026-11-19). Two ways to fill
        the recipient fields: type them (today), or **paste the profile**. Open the person's LinkedIn
        profile in your own browser, select all and copy, paste into Sourced, and the AI pulls out

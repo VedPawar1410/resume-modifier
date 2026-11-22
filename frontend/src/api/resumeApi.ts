@@ -11,6 +11,10 @@ import type {
   OutreachRequest,
   OutreachState,
   ProfileParse,
+  QAAnswer,
+  QARequest,
+  QASimilar,
+  QAState,
   SaveLatexResponse,
 } from "../types";
 
@@ -127,6 +131,23 @@ export const resumeApi = {
   parseProfile: (id: number, profileText: string): Promise<ProfileParse> =>
     api.post<ProfileParse>(`/api/history/${id}/outreach/parse-profile`, { profile_text: profileText })
       .then((r) => r.data),
+
+  // Application Q&A: free providers (Groq / Gemini), answers saved with the résumé.
+  qa: (id: number): Promise<QAState> =>
+    api.get<QAState>(`/api/history/${id}/qa`).then((r) => r.data),
+
+  createQA: (id: number, req: QARequest): Promise<QAAnswer> =>
+    api.post<QAAnswer>(`/api/history/${id}/qa`, req).then((r) => r.data),
+
+  // Saved answers to similar questions across every résumé — word overlap in code, no AI.
+  similarQA: (id: number, question: string): Promise<QASimilar[]> =>
+    api.post<QASimilar[]>(`/api/history/${id}/qa/similar`, { question }).then((r) => r.data),
+
+  updateQA: (id: number, answerId: string, answer: string): Promise<QAAnswer> =>
+    api.patch<QAAnswer>(`/api/history/${id}/qa/${answerId}`, { answer }).then((r) => r.data),
+
+  deleteQA: (id: number, answerId: string): Promise<void> =>
+    api.delete(`/api/history/${id}/qa/${answerId}`).then(() => undefined),
 
   deleteHistory: (id: number): Promise<void> =>
     api.delete(`/api/history/${id}`).then(() => undefined),

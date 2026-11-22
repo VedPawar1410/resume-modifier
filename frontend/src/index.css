@@ -672,6 +672,17 @@ kbd {
 .outreach__count { color: var(--muted); }
 .outreach__count.is-near { color: var(--warn); }
 .outreach__count.is-over { color: var(--danger); margin: 0; }
+/* Application Q&A (reuses the outreach pane styles above) */
+.qa__question { min-height: 72px; resize: vertical; }
+.qa__limit { display: grid; grid-template-columns: minmax(72px, 1fr) minmax(0, 1.2fr); gap: 6px; }
+.qa__q { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; color: var(--ink); font-weight: 500; }
+.qa__similar { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); }
+.qa__similar p { margin: 0; }
+.qa__similar-item { display: flex; flex-direction: column; gap: 4px; padding-top: 8px; border-top: 1px solid var(--line); }
+.qa__similar-item .btn { align-self: flex-start; }
+.qa__similar-q { font-weight: 500; }
+.qa__similar-a { color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.qa__sources { margin: 0; }
 
 /* Job-fit check (compose screen) */
 .jd-card__actions { display: flex; align-items: center; gap: 8px; }

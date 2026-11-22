@@ -1,11 +1,12 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import type { CurrentResume, SaveState } from "../types";
-import { AlertIcon, CheckIcon, CloseIcon, CodeIcon, DownloadIcon, MailIcon, PlusIcon, SidebarIcon, SparkIcon } from "./Icons";
+import { AlertIcon, ChatIcon, CheckIcon, CloseIcon, CodeIcon, DownloadIcon, MailIcon, PlusIcon, SidebarIcon, SparkIcon } from "./Icons";
 import { parseDate } from "../utils/dates";
 import { LatexEditor } from "./LatexEditor";
 import { MatchReportPanel } from "./MatchReportPanel";
 import { OutreachPanel } from "./OutreachPanel";
+import { QAPanel } from "./QAPanel";
 
 interface Props {
   resume: CurrentResume;
@@ -71,10 +72,10 @@ export function ResultView({
   // App keys this component by record id, so the draft starts fresh for each résumé.
   const [draft, setDraft] = useState(resume.latex);
   const [wrap, setWrap] = useState(true);
-  // The match report and outreach use the same side pane as the editor; one at a time.
-  const [panel, setPanel] = useState<"match" | "outreach" | null>(null);
+  // The match report, outreach and Q&A use the same side pane as the editor; one at a time.
+  const [panel, setPanel] = useState<"match" | "outreach" | "qa" | null>(null);
   const sideOpen = editorOpen || panel !== null;
-  const togglePanel = (which: "match" | "outreach") => {
+  const togglePanel = (which: "match" | "outreach" | "qa") => {
     if (panel !== which && editorOpen) closeEditor();
     setPanel((open) => (open === which ? null : which));
   };
@@ -185,6 +186,15 @@ export function ResultView({
           >
             <MailIcon /> Outreach
           </button>
+          <button
+            className={`btn btn--ghost ${panel === "qa" ? "is-on" : ""}`}
+            onClick={() => togglePanel("qa")}
+            disabled={!resume.recordId}
+            aria-pressed={panel === "qa"}
+            title="Answer the application's extra questions"
+          >
+            <ChatIcon /> Q&amp;A
+          </button>
           {resume.pdfUrl && (
             <a className="btn btn--ink" href={resume.pdfUrl} download={downloadName(draft, resume.title)}>
               <DownloadIcon /> Download PDF
@@ -278,6 +288,9 @@ export function ResultView({
           )}
           {panel === "outreach" && !editorOpen && resume.recordId && (
             <OutreachPanel key="outreach" recordId={resume.recordId} onClose={() => setPanel(null)} />
+          )}
+          {panel === "qa" && !editorOpen && resume.recordId && (
+            <QAPanel key="qa" recordId={resume.recordId} onClose={() => setPanel(null)} />
           )}
         </AnimatePresence>
       </div>
