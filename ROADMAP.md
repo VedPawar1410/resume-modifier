@@ -9,10 +9,10 @@ happens on branches and pull requests, which get their own Vercel preview links 
 production. A branch merges into `main` only when you say so.
 
 **Order from here:**
-1. *Now:* apply for jobs with the live app (Sourced v2 is live since 2026-11-23). Use the match
-   report on applications that matter.
-2. *Soon, with you (~1 session):* **KB consistency session** (For Ved) — clears the wording conflicts.
-3. *Track B, on branches, in this order:* landing page (§2) → in-app KB builder (§3) → accounts (§4)
+1. *Now:* **✅ Track A is fully closed (2026-11-23)** — no open items; KB consistency pass done.
+   Apply for jobs with the live app and use the match report on applications that matter. Your one
+   ongoing job: tune `backend/prompts/outreach_system.txt` as you learn what gets replies.
+2. *Track B, on branches, in this order:* landing page (§2) → in-app KB builder (§3) → accounts (§4)
    → usage limits (§6) → per-job controls (§5) → insights page (§7); v2 pipeline (§1b) when the
    prompt nears ~90K tokens; domain + repo rename before a public launch (§1).
 
@@ -46,22 +46,18 @@ production. A branch merges into `main` only when you say so.
       email alerts at $1 and $5. An alert, not a cap — it tells you before a surprise bill.
 - [x] **Calendar reminder:** the GitHub KB token expires in a year — replace it then (DEPLOYMENT.md §2,
       and the `az containerapp secret set` command), or the live app will say the KB isn't found.
-- [ ] **KB consistency session (Claude + Ved, later).** Claude does an in-depth pass over `kb.md` for
-      conflicting or awkward points; then we clear them one at a time and update the KB together.
-      Found so far in the test pass:
-  - [ ] `exp-stackular`: "Led a 4-member team (with our junior team)" is copied word for word and reads
-        oddly → reword (e.g. "including junior developers") once Ved confirms the meaning.
-  - [ ] `exp-general-motors`: a bullet says "Coded and maintained data pipelines" (LinkedIn) but its
-        note says "frame as learning and assisting" → one résumé said *maintained*, another *helped*.
-        Decide which is true and keep only that.
-  - [ ] `exp-google-cloud`: role is "Cloud Computing Intern" but the note says present it as a training
-        program → put "(training program)" in the role field so every résumé shows it.
-  - [ ] Mentoring evidence: no teaching/mentoring line anywhere, so mentor roles can't be matched —
-        add one if Ved guided the ATS team's juniors.
-  - [ ] Small: AWS appears as a skill from a course only (borderline); "about a couple of months"
-        hedges twice.
-- [ ] Two open KB questions (optional): how many people you showed Narrate to; the VIT course name for
-      the wearable-sensor project.
+- [x] **KB consistency session (Claude + Ved, 2026-11-23).** Each conflict cleared with Ved and
+      pushed to the private KB repo (details live there, not here — this repo is public):
+  - [x] `exp-stackular` team-lead wording: kept as is (Ved's call).
+  - [x] `exp-general-motors`: pipeline bullet now matches its "learning and assisting" note.
+  - [x] `exp-google-cloud`: role and title now say it was a training program (still `never_include`).
+  - [x] Mentoring evidence: one bullet added under `exp-stackular` (+ `mentoring` tag).
+  - [x] Small: AWS course-only skill kept as is; the double-hedged usage result reworded.
+  - [x] Q&A Profile fields filled (`work_authorization`, `notice_period`, `earliest_start`,
+        `relocation`); `salary_expectation` left empty on purpose — it differs per job and Profile
+        also feeds outreach, so give it per job in Q&A Notes.
+- [x] ~~Two open KB questions (optional)~~ — dropped by Ved (2026-11-23): not worth the detail; the
+      two TODO lines stay in the KB.
 
 ---
 
@@ -71,7 +67,7 @@ production. A branch merges into `main` only when you say so.
        what it showed (see *Metrics*): headline overflow, mixed date styles, wrong quote marks, a
        mis-stated eval result, `---` in history titles, output cap too close (16k → 32k), irrelevant
        experience now shrinks to one line, trim pass told to cut the minimum.
-2. [ ] ~~Before deploying~~ → **deferred (2026-11-18)**: at ~1.5–2¢ per résumé and good selection in the
+2. [x] ~~Before deploying~~ → **deferred (2026-11-18), tracked as Track B §1b**: at ~1.5–2¢ per résumé and good selection in the
        quality pass, v1 is fine for personal use. **Build v2 when** the prompt nears ~90K tokens (the
        `AI usage:` log shows `input=`), or selection quality drops. Moved to Track B.
        **v2 two-stage pipeline (select → write)** — design kept here:
@@ -113,16 +109,17 @@ production. A branch merges into `main` only when you say so.
              LinkedIn message / InMail, referral ask. Written from the JD, the résumé and the KB's
              Profile + Targeting only. Each draft is saved with the résumé, editable, copyable.
        - [x] **Free only:** Groq (gpt-oss-120b), then Gemini. Never Claude. ~3.5K tokens per message.
-       - [ ] **You:** create a free Gemini key (aistudio.google.com), put `GEMINI_API_KEY` in `.env`,
+       - [x] **You:** create a free Gemini key (aistudio.google.com), put `GEMINI_API_KEY` in `.env`,
              and add both keys to Azure ([DEPLOYMENT.md](docs/DEPLOYMENT.md) → *Outreach keys*).
-             Until then the live app has no outreach provider.
-       - [ ] **Writing standards pass** — tune `backend/prompts/outreach_system.txt` once you've sent
-             a few and seen what gets replies.
-       - [ ] Later: find work emails (pattern guess, or Hunter/Apollo with a key); mark drafts
+             Done 2026-11-18: set in `.env` and on Azure.
+       - [x] **Writing standards pass** — closed 2026-11-23 as an ongoing manual job for Ved: he tunes
+             `backend/prompts/outreach_system.txt` himself as he finds formats that get replies
+             (restart the backend after an edit; `--reload` watches only `.py`).
+       - Later (unscheduled ideas, not Track A to-dos): find work emails (pattern guess, or Hunter/Apollo with a key); mark drafts
              sent / replied (pairs with the application tracker idea).
 
-**→ ✅ Track A is DONE (2026-11-18).** 1, 3 and 4 are ticked and the manual test pass came back
-clean. What's left for you is optional (budget alert, KB consistency session, §5 extras).
+**→ ✅ Track A is DONE (2026-11-18), fully closed 2026-11-23** — every watch item decided, KB
+consistency pass pushed. Only the "Later" ideas above remain, unscheduled.
 
 ---
 
@@ -139,8 +136,11 @@ clean. What's left for you is optional (budget alert, KB consistency session, §
              never pad. Trim pass keeps all 3 projects and the single skills run.
        - Result: Eveo AI went from Experience 4/1/1 + Projects 3/3/3 to **5/2 + 4/5/4**; Ziro
          **4/2 + 4/4/4**. Both one page, 0 repairs, no Google Cloud/Certifications.
-       - [ ] Watch: some bullets wrap by 1-2 words (wasted line), and ML-heavy résumés can end ~10%
-             short of the bottom when the KB has fewer facts for those projects.
+       - [x] ~~Watch: some bullets wrap by 1-2 words (wasted line), and ML-heavy résumés can end ~10%
+             short of the bottom when the KB has fewer facts for those projects.~~ Closed 2026-11-23,
+             not necessary (Ved): the résumés are right as they are; a stray widow gets fixed in the
+             editor, and a little white space beats padded bullets. Considered: TeX `\looseness`
+             ($0), a measure + AI pass (~1¢), a fill pass (~1-1.5¢).
 
 2. [x] **Job-fit check before generating** (built 2026-11-19) — *Check fit* next to Generate on the
        compose screen: **apply / maybe / skip**, a 0-100 fit score in a ring, and short reasons.
@@ -163,9 +163,10 @@ clean. What's left for you is optional (budget alert, KB consistency session, §
          with the résumé (`fit_check` column). The per-résumé Match report stays the deep audit.
        - Tested: Eveo backend → apply 90-96, "Gen AI Engineer" (2+ yrs) → maybe 69, Ziro mentor →
          maybe 50, a synthetic Staff ML role → skip 0-25.
-       - [ ] Watch: two checks within a minute hit Groq's 8K/min limit; the second goes to Gemini
-             (needs `GEMINI_API_KEY` on Azure — your Outreach to-do). The model only sees tags, so a
-             skill buried in a project's text may show as missing — *Generate anyway* is there.
+       - [x] ~~Watch: two checks within a minute hit Groq's 8K/min limit; the second goes to Gemini.
+             The model only sees tags, so a skill buried in a project's text may show as missing —
+             *Generate anyway* is there.~~ Closed 2026-11-23, accepted (Ved): the fallback is only
+             slower (~10-30 s), never fails, and stays $0.
        - Optional later: paste a *public* careers-page URL (Greenhouse, Lever, Workday…) and Sourced
          fetches the JD — LinkedIn job pages need your login, so those stay copy-paste.
 3. [x] **Professional UI/UX pass — dark + light** (2026-11-22). Design system "Midnight Ledger":
@@ -186,8 +187,8 @@ clean. What's left for you is optional (budget alert, KB consistency session, §
          under a 1280px window; side pane is clamp(360px, 42%, 600px); Esc closes panels; phones get
          a drawer sidebar.
        - Mockups: Canva design `DAHbqI20D0A` (synthetic content).
-       - [ ] Not checked visually: the login screen (needs `APP_PASSWORD` locally) — check on the
-             live site after deploying.
+       - [x] Not checked visually: the login screen (needs `APP_PASSWORD` locally) — checked by Ved on
+             the live site, 2026-11-23.
 4. [x] **Application Q&A** (Ved's idea, 2026-11-18; built 2026-11-22) — a **Q&A** button on each
        résumé (next to Outreach): paste a portal's screening / supplemental question, get an answer to
        copy straight in. Grounded in the JD, this résumé and the KB; if the KB lacks a fact it says so.
@@ -210,11 +211,13 @@ clean. What's left for you is optional (budget alert, KB consistency session, §
          (word overlap, no AI) with a Copy button.
        - **Saved:** `qa` column (JSON list). `GET/POST /api/history/{id}/qa`, `POST …/qa/similar`,
          `PATCH/DELETE …/qa/{answer_id}`. `services/qa_service.py`, `prompts/qa_system.txt`.
-       - [ ] **You:** add to kb.md Profile (private repo, or via kb-ingest): `work_authorization`
-             (still only the template comment), `notice_period`, `earliest_start`, `relocation`,
-             `salary_expectation`. Until then those questions say "not in your KB" (or use Notes).
-       - [ ] Watch: keyword matching can miss a project whose skill is buried deep in its text — use
-             the project picker. Gemini answers took 8-60 s in testing (Groq ~1-3 s).
+       - [x] **You:** add to kb.md Profile: `work_authorization`, `notice_period`, `earliest_start`,
+             `relocation` — done 2026-11-23. `salary_expectation` is left empty on purpose, so salary
+             questions say "not in your KB": give the figure per job in Notes.
+       - [x] ~~Watch: keyword matching can miss a project whose skill is buried deep in its text — use
+             the project picker. Gemini answers took 8-60 s in testing (Groq ~1-3 s).~~ Closed
+             2026-11-23, accepted (Ved): the picker covers misses; Gemini runs only when a prompt
+             won't fit Groq.
        - Later: a cover letter could live here.
 5. [x] **Outreach: fill the form from a LinkedIn profile** (Ved's idea, 2026-11-18; built 2026-11-19). Two ways to fill
        the recipient fields: type them (today), or **paste the profile**. Open the person's LinkedIn
@@ -242,8 +245,9 @@ clean. What's left for you is optional (budget alert, KB consistency session, §
          that change each deploy), the page is server-driven UI so the Network JSON describes widgets,
          and a console `copy(main.innerText)` is the same grey area as an extension. ⌘A ⌘C + trimming
          gets the same facts.
-       - [ ] Try it on a few real profiles (recruiter, manager, alum) and tune the trim lists if noise
-             gets through. LinkedIn's "More → Save to PDF" upload is a possible later input.
+       - [x] Try it on a few real profiles (recruiter, manager, alum) and tune the trim lists if noise
+             gets through — tried by Ved on real profiles, 2026-11-23. LinkedIn's "More → Save to
+             PDF" upload is a possible later input.
 
 6. [x] **Sourced v2 — job-centred UI** (built 2026-11-22, **merged to `main` 2026-11-23**, PR #1).
        The app is organised around **jobs**: every fit-checked JD is saved as a job, and Fit →
@@ -274,9 +278,11 @@ clean. What's left for you is optional (budget alert, KB consistency session, §
            KB-entries chip and rail icons; keys 1–5 switch steps; tab counts (Q&A · 3); "Next: …"
            nudges; toasts with Undo for status; locked/empty steps preview "what you'll get"; Fit puts
            the requirements beside the verdict on wide screens; a dismissable first-visit hint.
-       - [ ] Watch: at 1100px with the jobs pane open, a 50/50 dock is tight (~400px a side) — drag it.
-       - [ ] Not checked: the loader *on a job page* with must-have chips (needs a paid generation;
-             same component as on Home, which was checked).
+       - [x] ~~Watch: at 1100px with the jobs pane open, a 50/50 dock is tight (~400px a side).~~
+             Closed 2026-11-23, not necessary (Ved): drag the divider once; it's remembered.
+       - [x] Checked 2026-11-23 at $0: the loader *on a job page* with must-have chips — local fit
+             check, generate request held in the browser (no AI call). Timer, steps, chips, KB count
+             and quote render at 1440px; stacks to one column at 1100px; Cancel returns cleanly.
 
 ---
 
